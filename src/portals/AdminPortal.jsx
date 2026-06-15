@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, User, Users, Laptop, Sparkles, Database, Settings, 
-  Plus, CheckCircle, AlertTriangle, X 
+  Plus, CheckCircle, AlertTriangle, X, Shield, Lock, Key, Menu
 } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
+import { authService } from '../services/api';
 
 export default function AdminPortal({
   students,
@@ -19,10 +20,68 @@ export default function AdminPortal({
   setNewDeviceForm,
   selectedRiskStudent,
   setSelectedRiskStudent,
-  handleAddDeviceSubmit
+  handleAddDeviceSubmit,
+  isSidebarOpen,
+  setIsSidebarOpen
 }) {
+  const [staffList, setStaffList] = useState([]);
+  const [showAddStaffModal, setShowAddStaffModal] = useState(false);
+  const [newStaffForm, setNewStaffForm] = useState({ username: '', email: '', password: '', full_name: '', role: 'Lecturer' });
+  const [passwordForm, setPasswordForm] = useState({ current: '', new: '', confirm: '' });
+  const [loading, setLoading] = useState(false);
+
+  // Fetch staff list when 'users' screen is active
+  useEffect(() => {
+    if (activeScreen === 'users') {
+      const fetchStaff = async () => {
+        setLoading(true);
+        try {
+          const data = await authService.getUsers();
+          setStaffList(data);
+        } catch (error) {
+          console.error("Failed to fetch staff:", error);
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchStaff();
+    }
+  }, [activeScreen]);
+
+  const handleAddStaffSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const newUser = await authService.signup(newStaffForm);
+      setStaffList(prev => [...prev, newUser]);
+      setShowAddStaffModal(false);
+      setNewStaffForm({ username: '', email: '', password: '', full_name: '', role: 'Lecturer' });
+      alert('Staff user created successfully.');
+    } catch (error) {
+      alert(`Failed to create staff: ${error.message}`);
+    }
+  };
+
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    if (passwordForm.new !== passwordForm.confirm) {
+      alert("New passwords do not match.");
+      return;
+    }
+    try {
+      await authService.changePassword({
+        current_password: passwordForm.current,
+        new_password: passwordForm.new,
+        username: 'admin' // In production, this would come from the logged-in user context
+      });
+      setPasswordForm({ current: '', new: '', confirm: '' });
+      alert("Password changed successfully.");
+    } catch (error) {
+      alert(`Failed to change password: ${error.message}`);
+    }
+  };
+
   return (
-    <div className="portal-layout theme-crimson">
+    <div className="portal-layout">
       <Sidebar 
         menuItems={[
           { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -40,9 +99,17 @@ export default function AdminPortal({
         activeScreen={activeScreen}
         setActiveScreen={setActiveScreen}
         onLogout={onLogout}
+        isOpen={isSidebarOpen}
+        setIsOpen={setIsSidebarOpen}
       />
 
       <main className="portal-workspace">
+        <button 
+          className="btn btn-ghost p-2 md-hidden mb-4 self-start" 
+          onClick={() => setIsSidebarOpen(true)}
+        >
+          <Menu size={24} />
+        </button>
         {activeScreen === 'dashboard' && (
           <div>
             <div className="workspace-header">
@@ -54,7 +121,7 @@ export default function AdminPortal({
 
             <div className="grid-stats">
               <div className="stat-card">
-                <div className="stat-icon" style={{ backgroundColor: '#FEE2E2', color: '#DC2626' }}><Laptop size={22} /></div>
+                <div className="stat-icon" style={{ backgroundColor: 'var(--accent-100)', color: 'var(--accent-600)' }}><Laptop size={22} /></div>
                 <div className="stat-info">
                   <span className="stat-value">{devices.length}</span>
                   <span className="stat-label">Registered Scanners</span>
@@ -68,27 +135,27 @@ export default function AdminPortal({
                 </div>
               </div>
               <div className="stat-card">
-                <div className="stat-icon red"><AlertTriangle size={22} /></div>
+                <div className="stat-icon" style={{ backgroundColor: 'var(--primary-100)', color: 'var(--primary-900)' }}><Activity size={22} /></div>
                 <div className="stat-info">
-                  <span className="stat-value">{devices.filter(d => d.status !== 'Ready').length}</span>
-                  <span className="stat-label">Scanners Offline</span>
+                  <span className="stat-value">98.2%</span>
+                  <span className="stat-label">System Uptime</span>
                 </div>
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
-              <div className="card" style={{ margin: '0' }}>
-                <h3>Active Biometric Scanners</h3>
-                <p>Heartbeat diagnostic summaries from classroom terminals:</p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '16px' }}>
+            <div className="grid grid-cols-2 gap-6 sm-grid-cols-1">
+              <div className="card">
+                <h3 className="mb-4">Active Biometric Scanners</h3>
+                <p className="text-sm mb-6">Heartbeat diagnostic summaries from classroom terminals:</p>
+                <div className="flex flex-col gap-3">
                   {devices.map(dev => (
-                    <div key={dev.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', backgroundColor: 'var(--bg-slate)', borderRadius: '6px' }}>
+                    <div key={dev.id} className="flex justify-between items-center p-4 bg-primary-50 rounded-xl border border-light">
                       <div>
-                        <span style={{ fontWeight: 600, fontSize: '14px' }}>{dev.name}</span>
-                        <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Location: {dev.location} | IP: {dev.ip}</div>
+                        <span className="font-bold text-sm">{dev.name}</span>
+                        <div className="font-mono text-[10px] text-dim uppercase mt-1">IP: {dev.ip} • {dev.location}</div>
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{dev.latency}</span>
+                      <div className="flex items-center gap-3">
+                        <span className="font-mono text-[10px] text-accent-600 font-bold">{dev.latency}</span>
                         <span className={`status-dot ${dev.status === 'Ready' ? 'connected' : 'disconnected'}`}></span>
                       </div>
                     </div>
@@ -96,14 +163,23 @@ export default function AdminPortal({
                 </div>
               </div>
 
-              <div className="card" style={{ margin: '0' }}>
-                <h3>Biometric Audit Telemetry</h3>
-                <p>Telemetry stream showing recent portal connections:</p>
-                <ul style={{ paddingLeft: '16px', fontSize: '13px', lineHeight: '1.8', color: 'var(--text-muted)' }}>
-                  <li>10:44 AM - Operator login token verified for Officer Vincent</li>
-                  <li>10:40 AM - Sync completed: 4 students roster uploaded to Main Campus DB</li>
-                  <li>09:12 AM - Server database backup build compiled successfully</li>
-                </ul>
+              <div className="card">
+                <h3 className="mb-4">Biometric Audit Telemetry</h3>
+                <p className="text-sm mb-6">Telemetry stream showing recent portal connections:</p>
+                <div className="flex flex-col gap-4">
+                  <div className="flex gap-3 text-sm">
+                    <span className="font-mono text-xs text-dim">10:44:01</span>
+                    <p className="m-0"><strong className="text-primary-950">Officer Vincent</strong> authenticated via Identity-01</p>
+                  </div>
+                  <div className="flex gap-3 text-sm">
+                    <span className="font-mono text-xs text-dim">10:40:15</span>
+                    <p className="m-0">Sync completed: 4 biometric templates committed to DB</p>
+                  </div>
+                  <div className="flex gap-3 text-sm">
+                    <span className="font-mono text-xs text-dim">09:12:44</span>
+                    <p className="m-0 text-success-600 font-bold">Encrypted cloud backup build successful</p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -116,40 +192,94 @@ export default function AdminPortal({
                 <h2>Staff Access Management</h2>
                 <span>Create and edit access roles for academic registration officers</span>
               </div>
+              <button 
+                className="btn btn-primary flex items-center gap-2" 
+                style={{ backgroundColor: 'var(--accent-600)', borderColor: 'var(--accent-600)' }}
+                onClick={() => setShowAddStaffModal(true)}
+              >
+                <Plus size={16} /> <span>Signup New Operator</span>
+              </button>
             </div>
 
             <div className="table-container">
               <table>
                 <thead>
                   <tr>
-                    <th>Staff Username</th>
+                    <th>Full Name</th>
+                    <th>Username</th>
+                    <th>Email</th>
                     <th>Assigned Role</th>
-                    <th>Web Access Control</th>
-                    <th>Assigned Portal Scope</th>
+                    <th>Status</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr>
-                    <td style={{ fontWeight: 600 }}>Officer Vincent</td>
-                    <td>Registration Officer</td>
-                    <td><span className="badge badge-success">ACTIVE</span></td>
-                    <td>Portal 1 (Biometric Enrollment)</td>
-                  </tr>
-                  <tr>
-                    <td style={{ fontWeight: 600 }}>Prof. Vance</td>
-                    <td>Academic Lecturer</td>
-                    <td><span className="badge badge-success">ACTIVE</span></td>
-                    <td>Portal 3 (Lecturer Roster portal)</td>
-                  </tr>
-                  <tr>
-                    <td style={{ fontWeight: 600 }}>Admin Victor</td>
-                    <td>Super Administrator</td>
-                    <td><span className="badge badge-success">ACTIVE</span></td>
-                    <td>All Portals (1, 2, 3, 4)</td>
-                  </tr>
+                  {staffList.map(staff => (
+                    <tr key={staff.id}>
+                      <td className="font-bold">{staff.full_name}</td>
+                      <td>{staff.username}</td>
+                      <td>{staff.email}</td>
+                      <td>{staff.role}</td>
+                      <td>
+                        <span className={`badge ${staff.is_active ? 'badge-success' : 'badge-danger'}`}>
+                          {staff.is_active ? 'ACTIVE' : 'INACTIVE'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                  {staffList.length === 0 && !loading && (
+                    <tr>
+                      <td colSpan="5" className="text-center p-6 text-dim">No staff members found in registry.</td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
+
+            {showAddStaffModal && (
+              <div className="modal-overlay">
+                <div className="modal-content-box">
+                  <div className="flex justify-between items-center mb-6">
+                    <h3 className="flex items-center gap-2"><Shield size={20} className="text-crimson-600" /> Register System Operator</h3>
+                    <button className="btn btn-ghost p-1" onClick={() => setShowAddStaffModal(false)}><X size={20} /></button>
+                  </div>
+                  <form onSubmit={handleAddStaffSubmit}>
+                    <div className="grid grid-cols-2 gap-4 mb-4">
+                      <div className="form-group">
+                        <label>Full Name</label>
+                        <input type="text" placeholder="Victor Admin" required value={newStaffForm.full_name} onChange={e => setNewStaffForm({...newStaffForm, full_name: e.target.value})} />
+                      </div>
+                      <div className="form-group">
+                        <label>Username</label>
+                        <input type="text" placeholder="v.admin" required value={newStaffForm.username} onChange={e => setNewStaffForm({...newStaffForm, username: e.target.value})} />
+                      </div>
+                    </div>
+                    <div className="form-group">
+                      <label>Email Address</label>
+                      <input type="email" placeholder="victor@university.edu" required value={newStaffForm.email} onChange={e => setNewStaffForm({...newStaffForm, email: e.target.value})} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 mb-4">
+                      <div className="form-group">
+                        <label>Initial Password</label>
+                        <input type="password" placeholder="••••••••" required value={newStaffForm.password} onChange={e => setNewStaffForm({...newStaffForm, password: e.target.value})} />
+                      </div>
+                      <div className="form-group">
+                        <label>Role</label>
+                        <select value={newStaffForm.role} onChange={e => setNewStaffForm({...newStaffForm, role: e.target.value})}>
+                          <option value="Admin">Admin</option>
+                          <option value="Lecturer">Lecturer</option>
+                          <option value="Registration Officer">Registration Officer</option>
+                          <option value="ICT Officer">ICT Officer</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="flex justify-end gap-3 mt-6">
+                      <button type="button" className="btn btn-secondary" onClick={() => setShowAddStaffModal(false)}>Cancel</button>
+                      <button type="submit" className="btn btn-primary" style={{ backgroundColor: '#DC2626' }}>Authorize Operator</button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -214,33 +344,37 @@ export default function AdminPortal({
                 <h2>Device Terminal Configurations</h2>
                 <span>Monitor socket latency and allocate HID terminal nodes</span>
               </div>
-              <button className="btn btn-primary" style={{ backgroundColor: '#DC2626' }} onClick={() => setShowAddDeviceModal(true)}>
-                <Plus size={16} /> Add Scanner Device
+              <button 
+                className="btn btn-primary flex items-center gap-2" 
+                style={{ backgroundColor: 'var(--accent-600)', borderColor: 'var(--accent-600)' }}
+                onClick={() => setShowAddDeviceModal(true)}
+              >
+                <Plus size={16} /> <span>Allocate New Node</span>
               </button>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '24px' }}>
+            <div className="grid grid-cols-2 gap-6 sm-grid-cols-1">
               {devices.map(dev => (
-                <div key={dev.id} className="card" style={{ margin: '0' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{dev.id}</span>
-                    <span className={`badge ${dev.status === 'Ready' ? 'badge-success' : 'badge-danger'}`}>
-                      {dev.status}
+                <div key={dev.id} className="card">
+                  <div className="flex justify-between items-center mb-4">
+                    <span className="font-mono text-[10px] font-bold text-dim uppercase tracking-tighter">Terminal-ID: {dev.id}</span>
+                    <span className={`badge ${dev.status === 'Ready' ? 'badge-success' : 'badge-danger'} px-3`}>
+                      {dev.status === 'Ready' ? 'OPERATIONAL' : 'OFFLINE'}
                     </span>
                   </div>
-                  <h3 style={{ margin: '12px 0 6px 0', fontSize: '18px' }}>{dev.name}</h3>
-                  <p style={{ fontSize: '13px', margin: '0 0 16px 0' }}>Terminal Endpoint IP: <strong>{dev.ip}</strong></p>
+                  <h3 className="mb-1">{dev.name}</h3>
+                  <p className="font-mono text-xs text-accent-600 font-bold mb-6">IP_ADDR: {dev.ip}</p>
                   
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border-color)', paddingTop: '12px', fontSize: '12px' }}>
-                    <span>Socket latency: <strong>{dev.latency}</strong></span>
+                  <div className="flex justify-between items-center border-t border-light pt-4">
+                    <div className="flex items-center gap-2">
+                       <Activity size={14} className="text-dim" />
+                       <span className="text-xs font-bold text-primary-950">{dev.latency}</span>
+                    </div>
                     <button 
-                      className="btn btn-secondary" 
-                      style={{ height: '28px', fontSize: '11px', padding: '0 8px' }}
-                      onClick={() => {
-                        alert(`Pinged device ${dev.id}. Response latency: 12ms.`);
-                      }}
+                      className="btn btn-secondary h-8 px-4 text-[10px] font-bold uppercase tracking-wider" 
+                      onClick={() => alert(`Pinged node ${dev.id}. Latency: 12ms`)}
                     >
-                      Ping Node
+                      Sync Heartbeat
                     </button>
                   </div>
                 </div>
@@ -510,26 +644,53 @@ export default function AdminPortal({
         )}
 
         {activeScreen === 'settings' && (
-          <div style={{ maxWidth: '640px', margin: '0 auto', width: '100%' }}>
+          <div className="w-full max-w-4xl mx-auto">
             <div className="workspace-header">
               <div className="workspace-title">
-                <h2>System Settings</h2>
-                <span>Global database parameters and role classifications</span>
+                <h2>System & Profile Settings</h2>
+                <span>Global database parameters and account security control</span>
               </div>
             </div>
-            <div className="card">
-              <h3>Academic Integration Parameters</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '16px' }}>
-                <div className="form-grid-2">
-                  <div>
+
+            <div className="grid grid-cols-2 gap-6 items-start sm-grid-cols-1">
+              <div className="card">
+                <h3 className="flex items-center gap-2 mb-4"><Settings size={18} /> Academic Parameters</h3>
+                <div className="flex flex-col gap-4">
+                  <div className="form-group">
                     <label htmlFor="sys-semester">Active Semester Code</label>
                     <input type="text" id="sys-semester" defaultValue="2026-B" />
                   </div>
-                  <div>
+                  <div className="form-group">
                     <label htmlFor="sys-audit-ret">Audit Log Retention Policy (days)</label>
                     <input type="text" id="sys-audit-ret" defaultValue="365" />
                   </div>
+                  <button className="btn btn-primary w-full" style={{ backgroundColor: '#DC2626' }}>Update System Globals</button>
                 </div>
+              </div>
+
+              <div className="card">
+                <h3 className="flex items-center gap-2 mb-4"><Key size={18} /> Account Security</h3>
+                <p className="text-sm mb-6">Update your administrator password. Ensure you use a mix of characters for maximum security.</p>
+                
+                <form onSubmit={handleChangePassword}>
+                  <div className="form-group">
+                    <label>Current Password</label>
+                    <div className="relative">
+                      <input type="password" placeholder="••••••••" required value={passwordForm.current} onChange={e => setPasswordForm({...passwordForm, current: e.target.value})} />
+                    </div>
+                  </div>
+                  <div className="form-group">
+                    <label>New Password</label>
+                    <input type="password" placeholder="••••••••" required value={passwordForm.new} onChange={e => setPasswordForm({...passwordForm, new: e.target.value})} />
+                  </div>
+                  <div className="form-group">
+                    <label>Confirm New Password</label>
+                    <input type="password" placeholder="••••••••" required value={passwordForm.confirm} onChange={e => setPasswordForm({...passwordForm, confirm: e.target.value})} />
+                  </div>
+                  <button type="submit" className="btn btn-secondary w-full mt-2 flex items-center gap-2">
+                    <Lock size={16} /> Update Secret Key
+                  </button>
+                </form>
               </div>
             </div>
           </div>

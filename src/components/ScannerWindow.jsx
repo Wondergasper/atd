@@ -8,24 +8,24 @@ export default function ScannerWindow({ onClick }) {
   return (
     <div className="fingerprint-panel-card">
       <div 
-        className={`fingerprint-scanner-window ${scanState === 'scanning' ? 'active-scanning' : scanState === 'success' ? 'success-lock' : scanState === 'error' ? 'error-state' : ''}`}
+        className={`fingerprint-scanner-window ${scanState === 'scanning' ? 'active' : scanState === 'success' ? 'success' : scanState === 'error' ? 'error' : ''}`}
         onClick={onClick}
       >
-        <div className="scanner-beam"></div>
-        <Fingerprint size={84} className="fingerprint-graphic" />
+        {scanState === 'scanning' && <div className="scanner-beam"></div>}
+        <Fingerprint size={84} className={`fingerprint-graphic transition-colors ${scanState === 'success' ? 'text-success-600' : scanState === 'error' ? 'text-danger-600' : 'text-primary-800'}`} />
       </div>
-      <span style={{ fontWeight: 600, fontSize: '18px', color: '#FFFFFF' }}>
-        {scanState === 'scanning' ? 'Scanning...' : scanState === 'success' ? 'Scan Accepted!' : scanState === 'error' ? 'Scan Failed' : 'Click Window to Scan Finger'}
-      </span>
-      <p style={{ color: '#94A3B8', fontSize: '14px', marginTop: '8px', textAlign: 'center', maxWidth: '320px' }}>
+      <h3 className="mt-4 text-white">
+        {scanState === 'scanning' ? 'Scanning...' : scanState === 'success' ? 'Scan Accepted!' : scanState === 'error' ? 'Scan Failed' : 'Ready to Scan'}
+      </h3>
+      <p className="text-dim text-center mt-2 max-w-xs">
         {scannerMessage}
       </p>
 
       {qualityScore > 0 && (
-        <div className="quality-progress-wrapper">
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+        <div className="quality-progress-wrapper w-full mt-4">
+          <div className="flex justify-between text-xs mb-1">
             <span>NFIQ 2 Quality Score</span>
-            <span style={{ fontWeight: 'bold', color: qualityScore >= 60 ? 'var(--success-600)' : 'var(--danger-600)' }}>
+            <span className={`font-bold ${qualityScore >= 60 ? 'text-success-600' : 'text-danger-600'}`}>
               {qualityScore}% {qualityScore >= 60 ? '(Pass)' : '(Fail)'}
             </span>
           </div>

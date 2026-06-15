@@ -1,6 +1,6 @@
 import React from 'react';
 import { 
-  LayoutDashboard, Users, Download, Settings, CheckCircle, AlertTriangle, Play 
+  LayoutDashboard, Users, Download, Settings, CheckCircle, AlertTriangle, Play, Menu, BookOpen 
 } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
 import { MOCK_COURSES } from '../data/mockDb';
@@ -16,14 +16,16 @@ export default function LecturerPortal({
   reportingFilters,
   setReportingFilters,
   downloadingReport,
-  startReportExport
+  startReportExport,
+  isSidebarOpen,
+  setIsSidebarOpen
 }) {
   return (
     <div className="portal-layout theme-amber">
       <Sidebar 
         menuItems={[
           { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-          { id: 'courses', label: 'My Courses', icon: Users },
+          { id: 'courses', label: 'My Courses', icon: BookOpen },
           { id: 'reports', label: 'Reports Generator', icon: Download },
           { id: 'settings', label: 'Settings', icon: Settings }
         ]}
@@ -34,9 +36,18 @@ export default function LecturerPortal({
         activeScreen={activeScreen}
         setActiveScreen={setActiveScreen}
         onLogout={onLogout}
+        isOpen={isSidebarOpen}
+        setIsOpen={setIsSidebarOpen}
       />
 
       <main className="portal-workspace">
+        <button 
+          className="btn btn-ghost p-2 md-hidden mb-4 self-start" 
+          onClick={() => setIsSidebarOpen(true)}
+        >
+          <Menu size={24} />
+        </button>
+
         {activeScreen === 'dashboard' && (
           <div>
             <div className="workspace-header">
@@ -48,7 +59,7 @@ export default function LecturerPortal({
 
             <div className="grid-stats">
               <div className="stat-card">
-                <div className="stat-icon" style={{ backgroundColor: '#FEF3C7', color: '#D97706' }}><Users size={22} /></div>
+                <div className="stat-icon" style={{ backgroundColor: 'var(--accent-100)', color: 'var(--accent-600)' }}><BookOpen size={22} /></div>
                 <div className="stat-info">
                   <span className="stat-value">3</span>
                   <span className="stat-label">Active Courses</span>
@@ -65,28 +76,27 @@ export default function LecturerPortal({
                 <div className="stat-icon red"><AlertTriangle size={22} /></div>
                 <div className="stat-info">
                   <span className="stat-value">2</span>
-                  <span className="stat-label">Students At Risk (&lt;70%)</span>
+                  <span className="stat-label">Students At Risk</span>
                 </div>
               </div>
             </div>
 
-            <h3>Your Courses</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', marginTop: '16px' }}>
+            <h3 className="mb-4">Your Courses</h3>
+            <div className="grid grid-cols-2 gap-4 sm-grid-cols-1">
               {MOCK_COURSES.map(course => (
-                <div key={course.code} className="card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: '180px', margin: '0' }}>
+                <div key={course.code} className="card flex flex-col justify-between" style={{ minHeight: '180px' }}>
                   <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '12px', fontWeight: 600, color: '#D97706', backgroundColor: '#FEF3C7', padding: '2px 8px', borderRadius: '4px' }}>
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="badge badge-warning font-mono" style={{ backgroundColor: 'var(--accent-100)', color: 'var(--accent-600)' }}>
                         {course.code}
                       </span>
-                      <span style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--success-600)' }}>{course.average} Avg</span>
+                      <span className="font-bold text-success-600">{course.average} Avg</span>
                     </div>
-                    <h4 style={{ fontSize: '16px', margin: '12px 0 6px 0', fontWeight: 600 }}>{course.title}</h4>
-                    <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>{course.registered} students registered</span>
+                    <h3 style={{ fontSize: '1.25rem' }}>{course.title}</h3>
+                    <span className="text-dim text-sm">{course.registered} students registered</span>
                   </div>
                   <button 
-                    className="btn btn-secondary" 
-                    style={{ width: '100%', marginTop: '16px' }}
+                    className="btn btn-secondary w-full mt-4" 
                     onClick={() => { setSelectedCourse(course); setActiveScreen('course-details'); }}
                   >
                     View Attendance Roster
@@ -106,22 +116,22 @@ export default function LecturerPortal({
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
+            <div className="grid grid-cols-2 gap-6 sm-grid-cols-1">
               {MOCK_COURSES.map(course => (
-                <div key={course.code} className="card" style={{ margin: '0' }}>
-                  <span style={{ fontSize: '12px', fontWeight: 600, color: '#D97706' }}>{course.code}</span>
-                  <h3 style={{ margin: '8px 0 16px 0' }}>{course.title}</h3>
-                  <div style={{ display: 'flex', gap: '16px', borderTop: '1px solid var(--border-color)', paddingTop: '16px', marginBottom: '20px' }}>
+                <div key={course.code} className="card">
+                  <span className="font-mono text-accent-600 font-bold text-xs uppercase tracking-widest">{course.code}</span>
+                  <h3 className="mt-2 mb-4">{course.title}</h3>
+                  <div className="flex gap-6 border-t border-light pt-4 mb-6">
                     <div>
-                      <span style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Registered</span>
-                      <div style={{ fontSize: '16px', fontWeight: 'bold' }}>{course.registered} Students</div>
+                      <span className="text-xs text-dim uppercase tracking-wider">Registered</span>
+                      <div className="text-lg font-bold">{course.registered} Students</div>
                     </div>
                     <div>
-                      <span style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Term Average</span>
-                      <div style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--success-600)' }}>{course.average}</div>
+                      <span className="text-xs text-dim uppercase tracking-wider">Term Average</span>
+                      <div className="text-lg font-bold text-success-600">{course.average}</div>
                     </div>
                   </div>
-                  <button className="btn btn-primary" style={{ width: '100%', backgroundColor: '#D97706' }} onClick={() => { setSelectedCourse(course); setActiveScreen('course-details'); }}>
+                  <button className="btn btn-primary w-full" style={{ backgroundColor: 'var(--accent-600)', borderColor: 'var(--accent-600)' }} onClick={() => { setSelectedCourse(course); setActiveScreen('course-details'); }}>
                     Manage Session Attendance
                   </button>
                 </div>
@@ -135,14 +145,14 @@ export default function LecturerPortal({
             <div className="workspace-header">
               <div className="workspace-title">
                 <h2>{selectedCourse?.code}: {selectedCourse?.title}</h2>
-                <span>Session: <strong>14 June 2026</strong> | Roster: {selectedCourse?.registered} Registered</span>
+                <span>Session: <strong className="text-primary-950">14 June 2026</strong> | Roster: {selectedCourse?.registered} Registered</span>
               </div>
-              <div style={{ display: 'flex', gap: '12px' }}>
+              <div className="flex gap-3">
                 <button className="btn btn-secondary" onClick={() => setActiveScreen('courses')}>
-                  Back to Courses
+                  <ArrowLeft size={16} /> Back to Courses
                 </button>
-                <button className="btn btn-primary" style={{ backgroundColor: '#D97706' }} onClick={startReportExport}>
-                  Export Session CSV
+                <button className="btn btn-primary" style={{ backgroundColor: 'var(--accent-600)', borderColor: 'var(--accent-600)' }} onClick={startReportExport}>
+                  <Download size={16} /> Export Session CSV
                 </button>
               </div>
             </div>
@@ -153,17 +163,17 @@ export default function LecturerPortal({
                   <tr>
                     <th>Student Name</th>
                     <th>Matric Number</th>
-                    <th>Biometric Scan Time</th>
-                    <th>Session Check-In</th>
-                    <th>Manual Override Action</th>
+                    <th>Scan Time</th>
+                    <th>Status</th>
+                    <th>Manual Override</th>
                   </tr>
                 </thead>
                 <tbody>
                   {rosterList.map(item => (
                     <tr key={item.matric}>
-                      <td style={{ fontWeight: 600 }}>{item.name}</td>
-                      <td>{item.matric}</td>
-                      <td style={{ color: 'var(--text-muted)' }}>{item.time}</td>
+                      <td className="font-bold">{item.name}</td>
+                      <td className="font-mono text-sm">{item.matric}</td>
+                      <td className="text-dim text-sm">{item.time}</td>
                       <td>
                         <span className={`badge ${item.status === 'PRESENT' ? 'badge-success' : item.status === 'LATE' ? 'badge-warning' : 'badge-danger'}`}>
                           {item.status}
@@ -171,8 +181,8 @@ export default function LecturerPortal({
                       </td>
                       <td>
                         <select 
+                          className="h-8 py-0 text-xs w-32"
                           value={item.status} 
-                          style={{ height: '32px', padding: '0 8px', fontSize: '13px', width: '140px' }}
                           onChange={(e) => {
                             const newStatus = e.target.value;
                             setRosterList(prev => prev.map(s => 
@@ -194,7 +204,7 @@ export default function LecturerPortal({
         )}
 
         {activeScreen === 'reports' && (
-          <div style={{ maxWidth: '720px', margin: '0 auto', width: '100%' }}>
+          <div className="w-full max-w-2xl mx-auto">
             <div className="workspace-header">
               <div className="workspace-title">
                 <h2>Attendance Reports Generator</h2>
@@ -204,31 +214,29 @@ export default function LecturerPortal({
 
             <div className="card">
               <form onSubmit={(e) => { e.preventDefault(); startReportExport(); }}>
-                <div className="form-grid-2">
-                  <div>
-                    <label htmlFor="rep-course">Select Course</label>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="form-group">
+                    <label>Select Module</label>
                     <select 
-                      id="rep-course"
                       value={reportingFilters.course}
                       onChange={(e) => setReportingFilters(prev => ({ ...prev, course: e.target.value }))}
                     >
                       {MOCK_COURSES.map(c => <option key={c.code} value={c.code}>{c.code} - {c.title}</option>)}
                     </select>
                   </div>
-                  <div>
-                    <label htmlFor="rep-date">Target Date</label>
+                  <div className="form-group">
+                    <label>Target Date</label>
                     <input 
                       type="text" 
-                      id="rep-date" 
                       value={reportingFilters.date}
                       onChange={(e) => setReportingFilters(prev => ({ ...prev, date: e.target.value }))}
                     />
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: '16px', borderTop: '1px solid var(--border-color)', paddingTop: '24px', marginTop: '24px', justifyContent: 'flex-end' }}>
-                  <button type="submit" className="btn btn-primary" style={{ backgroundColor: '#D97706' }} disabled={downloadingReport}>
-                    {downloadingReport ? 'Building CSV Spreadsheet...' : 'Generate and Export CSV Report'}
+                <div className="flex justify-end gap-3 border-t border-light pt-6 mt-6">
+                  <button type="submit" className="btn btn-primary" style={{ backgroundColor: 'var(--accent-600)', borderColor: 'var(--accent-600)' }} disabled={downloadingReport}>
+                    <Download size={16} /> {downloadingReport ? 'Building CSV Spreadsheet...' : 'Generate and Export CSV Report'}
                   </button>
                 </div>
               </form>

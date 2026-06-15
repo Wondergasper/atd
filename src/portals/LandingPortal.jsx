@@ -23,26 +23,30 @@ export default function LandingPortal({ onLaunchPortal }) {
       <div className="landing-top-bar">
         <div className="landing-device-pill">
           <span className={`status-dot ${scannerConnection === 'connected' ? 'connected' : scannerConnection === 'disconnected' ? 'disconnected' : 'calibrating'}`}></span>
-          <Laptop size={14} style={{ marginLeft: '4px', marginRight: '4px' }} />
+          <Laptop size={14} className="mx-1" />
           <span>Scanner: {scannerConnection === 'connected' ? 'HID Driver Online' : scannerConnection === 'disconnected' ? 'Driver Offline' : 'Calibrating'}</span>
         </div>
       </div>
 
       <div className="landing-banner">
-        <div className="landing-branding">
-          <Fingerprint size={44} style={{ color: '#3B82F6' }} />
-          <h2>University Biometric Attendance Workspace</h2>
+        <div className="landing-branding flex items-center justify-center gap-4 mb-6">
+          <Fingerprint size={64} className="text-accent-600" />
+          <h2 className="font-bold">BIOMETRIC SUITE</h2>
         </div>
-        <p style={{ textTransform: 'uppercase', fontSize: '11px', letterSpacing: '0.1em', color: '#3B82F6', fontWeight: 700, marginBottom: '8px' }}>
-          Apex State University • Core Systems Selector
-        </p>
-        <p style={{ margin: '0' }}>Select an administrative portal, capture terminal, or academic monitor to authenticate and launch.</p>
+        <div className="flex flex-col items-center">
+          <span className="badge badge-warning font-mono mb-4 px-4 py-1 text-xs tracking-widest border border-accent-600/30">
+            APEX STATE UNIVERSITY • SECURE NODE v4.0
+          </span>
+          <p className="text-lg text-primary-500 max-w-lg">
+            High-fidelity biometric identity management and attendance forecasting system.
+          </p>
+        </div>
       </div>
 
       <div className="landing-grid">
         {/* Card 1: Registration Portal */}
         <div className="landing-card" onClick={() => onLaunchPortal('portal_1')}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div className="flex justify-between items-start">
             <div className="landing-card-icon" style={{ backgroundColor: 'rgba(37, 99, 235, 0.1)', color: '#60A5FA' }}>
               <UserCheck size={26} />
             </div>
@@ -58,7 +62,7 @@ export default function LandingPortal({ onLaunchPortal }) {
 
         {/* Card 2: Attendance Kiosk */}
         <div className="landing-card" onClick={() => onLaunchPortal('portal_2')}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div className="flex justify-between items-start">
             <div className="landing-card-icon" style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)', color: '#34D399' }}>
               <Fingerprint size={26} />
             </div>
@@ -74,7 +78,7 @@ export default function LandingPortal({ onLaunchPortal }) {
 
         {/* Card 3: Lecturer Portal */}
         <div className="landing-card" onClick={() => onLaunchPortal('portal_3')}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div className="flex justify-between items-start">
             <div className="landing-card-icon" style={{ backgroundColor: 'rgba(245, 158, 11, 0.1)', color: '#FBBF24' }}>
               <Users size={26} />
             </div>
@@ -90,7 +94,7 @@ export default function LandingPortal({ onLaunchPortal }) {
 
         {/* Card 4: Admin Portal */}
         <div className="landing-card" onClick={() => onLaunchPortal('portal_4')}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div className="flex justify-between items-start">
             <div className="landing-card-icon" style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#F87171' }}>
               <Sparkles size={26} />
             </div>

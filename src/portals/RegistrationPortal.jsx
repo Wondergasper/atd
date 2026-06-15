@@ -1,17 +1,20 @@
 import React, { useState } from 'react';
 import { 
-  LayoutDashboard, UserCheck, Users, Activity, Settings, Plus, CheckCircle, XCircle 
+  LayoutDashboard, UserCheck, Users, Activity, Settings, Plus, CheckCircle, XCircle, Menu 
 } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
 import ScannerWindow from '../components/ScannerWindow';
 import { useScanner } from '../hooks/useScanner';
+import { studentService, biometricService } from '../services/api';
 
 export default function RegistrationPortal({ 
   students, 
   setStudents, 
   activeScreen, 
   setActiveScreen, 
-  onLogout 
+  onLogout,
+  isSidebarOpen,
+  setIsSidebarOpen
 }) {
   const { 
     enrollmentProgress, 
@@ -30,30 +33,61 @@ export default function RegistrationPortal({
   const [registrationForm, setRegistrationForm] = useState({ name: '', matric: '', dept: 'Computer Science', email: '', consent: false });
   const [activeEnrollmentStudent, setActiveEnrollmentStudent] = useState(null);
 
-  const handleRegisterSubmit = (e) => {
+  const handleRegisterSubmit = async (e) => {
     e.preventDefault();
     if (!registrationForm.consent) {
       alert('Must obtain explicit consent before biometric recording.');
       return;
     }
-    const newStudent = {
-      matric: registrationForm.matric,
-      name: registrationForm.name,
-      dept: registrationForm.dept,
-      status: 'Pending',
-      attendance: '0%'
-    };
-    setStudents(prev => [...prev, newStudent]);
-    setActiveEnrollmentStudent(newStudent);
-    resetProgress();
-    setActiveScreen('enrollment');
+    
+    try {
+      const names = registrationForm.name.split(' ');
+      const newStudentData = {
+        matric_number: registrationForm.matric,
+        first_name: names[0],
+        last_name: names.slice(1).join(' ') || ' ',
+        email: registrationForm.email,
+        department_id: 1, // Default to CS for now
+        faculty_id: 1,
+        level: 100
+      };
+
+      const createdStudent = await studentService.create(newStudentData);
+      
+      const mappedStudent = {
+        id: createdStudent.id,
+        matric: createdStudent.matric_number,
+        name: `${createdStudent.first_name} ${createdStudent.last_name}`,
+        dept: 'Computer Science',
+        status: 'Pending',
+        attendance: '0%'
+      };
+
+      setStudents(prev => [...prev, mappedStudent]);
+      setActiveEnrollmentStudent(mappedStudent);
+      resetProgress();
+      setActiveScreen('enrollment');
+    } catch (error) {
+      alert(`Registration failed: ${error.message}`);
+    }
   };
 
   const handleEnrollmentScanClick = () => {
-    triggerEnrollmentScan(activeEnrollmentStudent, (student) => {
-      setStudents(prev => prev.map(s => 
-        s.matric === student.matric ? { ...s, status: 'Enrolled' } : s
-      ));
+    triggerEnrollmentScan(activeEnrollmentStudent, async (student, templateData) => {
+      try {
+        await biometricService.enroll({
+          student_id: student.id,
+          finger_type: "RIGHT_INDEX",
+          template_data: templateData,
+          quality_score: 85
+        });
+
+        setStudents(prev => prev.map(s => 
+          s.id === student.id ? { ...s, status: 'Enrolled' } : s
+        ));
+      } catch (error) {
+        alert(`Biometric enrollment failed: ${error.message}`);
+      }
     });
   };
 
@@ -74,9 +108,17 @@ export default function RegistrationPortal({
         activeScreen={activeScreen}
         setActiveScreen={setActiveScreen}
         onLogout={onLogout}
+        isOpen={isSidebarOpen}
+        setIsOpen={setIsSidebarOpen}
       />
 
       <main className="portal-workspace">
+        <button 
+          className="btn btn-ghost p-2 md-hidden mb-4 self-start" 
+          onClick={() => setIsSidebarOpen(true)}
+        >
+          <Menu size={24} />
+        </button>
         {activeScreen === 'dashboard' && (
           <div>
             <div className="workspace-header">
@@ -116,14 +158,14 @@ export default function RegistrationPortal({
             <div className="card">
               <h3>Biometric Sensor Status & Calibration</h3>
               <p>Wipe scanner glass periodically to maintain dry capture templates. Standard validation parameters:</p>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginTop: '16px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <CheckCircle size={16} style={{ color: 'var(--success-600)' }} />
-                  <span style={{ fontSize: '14px' }}>HID DigitalPersona 4500 websocket listening on Port 8000</span>
+              <div className="grid grid-cols-2 gap-4 mt-4">
+                <div className="flex items-center gap-3">
+                  <CheckCircle size={16} className="text-success-600" />
+                  <span className="text-sm">HID DigitalPersona 4500 listening on Port 8000</span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <CheckCircle size={16} style={{ color: 'var(--success-600)' }} />
-                  <span style={{ fontSize: '14px' }}>NFIQ Threshold Config: Minimum 60%</span>
+                <div className="flex items-center gap-3">
+                  <CheckCircle size={16} className="text-success-600" />
+                  <span className="text-sm">NFIQ Threshold Config: Minimum 60%</span>
                 </div>
               </div>
             </div>
@@ -200,7 +242,7 @@ export default function RegistrationPortal({
                   <span>I verify that the student has read the Biometric Privacy Consent forms and grants explicit permission to capture and store encrypted fingerprint templates.</span>
                 </label>
 
-                <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '24px' }}>
+                <div className="flex justify-end gap-3 mt-6">
                   <button type="button" className="btn btn-secondary" onClick={() => setActiveScreen('dashboard')}>Cancel</button>
                   <button type="submit" className="btn btn-primary">Submit & Enroll Biometrics</button>
                 </div>
@@ -214,33 +256,33 @@ export default function RegistrationPortal({
             <div className="workspace-header">
               <div className="workspace-title">
                 <h2>Biometric Enrollment Capture</h2>
-                <span>Student: <strong>{activeEnrollmentStudent?.name}</strong> ({activeEnrollmentStudent?.matric})</span>
+                <span>Student: <strong className="text-primary-700">{activeEnrollmentStudent?.name}</strong> ({activeEnrollmentStudent?.matric})</span>
               </div>
               <button className="btn btn-secondary" onClick={() => setActiveScreen('students')}>
                 Back to Roster
               </button>
             </div>
 
-            <div className="biometric-enrollment-grid">
+            <div className="grid grid-cols-2 gap-6 items-start">
               <div>
                 <ScannerWindow onClick={handleEnrollmentScanClick} />
                 
                 {enrollmentProgress === 4 && (
-                  <div className="card" style={{ marginTop: '24px', borderColor: 'var(--success-600)', backgroundColor: 'var(--success-100)', color: '#047857' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div className="card mt-6 border-success-600 bg-success-100" style={{ color: '#047857' }}>
+                    <div className="flex items-center gap-3">
                       <CheckCircle size={24} />
                       <div>
-                        <h4 style={{ margin: 0, fontWeight: 600 }}>Enrollment Template Generation Complete!</h4>
-                        <p style={{ margin: 0, fontSize: '14px', color: '#065F46', marginTop: '4px' }}>
+                        <h4 className="m-0 font-bold" style={{ color: '#065F46' }}>Enrollment Template Generation Complete!</h4>
+                        <p className="m-0 text-sm mt-1" style={{ color: '#065F46' }}>
                           4 prints registered successfully. Click below to verify scanner template match accuracy.
                         </p>
                       </div>
                     </div>
-                    <div style={{ marginTop: '16px', display: 'flex', gap: '12px' }}>
+                    <div className="mt-4 flex gap-3">
                       <button className="btn btn-primary" onClick={() => { setActiveScreen('verification'); setTestResult(null); setScanState('idle'); }}>
                         Test Verification Match
                       </button>
-                      <button className="btn btn-secondary" style={{ backgroundColor: '#FFFFFF' }} onClick={() => setActiveScreen('students')}>
+                      <button className="btn btn-secondary bg-white" onClick={() => setActiveScreen('students')}>
                         Finish & Save Student
                       </button>
                     </div>
@@ -252,18 +294,15 @@ export default function RegistrationPortal({
                 <h3>Capture Progress</h3>
                 <p>Websocket requires 4 distinct matches to calibrate registration templates:</p>
                 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '24px' }}>
+                <div className="flex flex-col gap-4 mt-6">
                   {[1, 2, 3, 4].map(num => (
-                    <div key={num} style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '14px' }}>
+                    <div key={num} className="flex items-center gap-3 text-sm">
                       <div 
+                        className="flex items-center justify-center border transition-colors"
                         style={{ 
-                          width: '24px', 
-                          height: '24px', 
+                          width: '28px', 
+                          height: '28px', 
                           borderRadius: '50%', 
-                          border: '1px solid var(--border-color)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
                           backgroundColor: enrollmentProgress >= num ? 'var(--success-100)' : 'transparent',
                           borderColor: enrollmentProgress >= num ? 'var(--success-600)' : 'var(--border-color)',
                           color: enrollmentProgress >= num ? 'var(--success-600)' : 'var(--text-muted)'
@@ -271,7 +310,7 @@ export default function RegistrationPortal({
                       >
                         {enrollmentProgress >= num ? <CheckCircle size={14} /> : num}
                       </div>
-                      <span style={{ fontWeight: enrollmentProgress >= num ? 600 : 400 }}>
+                      <span className={enrollmentProgress >= num ? 'font-bold' : ''}>
                         Fingerprint Capture Scan {num}
                       </span>
                     </div>
@@ -280,8 +319,7 @@ export default function RegistrationPortal({
 
                 {enrollmentProgress < 4 && (
                   <button 
-                    className="btn btn-primary" 
-                    style={{ width: '100%', marginTop: '32px' }}
+                    className="btn btn-primary w-full mt-8" 
                     onClick={handleEnrollmentScanClick}
                     disabled={scanState === 'scanning'}
                   >
@@ -294,7 +332,7 @@ export default function RegistrationPortal({
         )}
 
         {activeScreen === 'verification' && (
-          <div style={{ maxWidth: '640px', margin: '0 auto', width: '100%' }}>
+          <div className="w-full max-w-2xl mx-auto">
             <div className="workspace-header">
               <div className="workspace-title">
                 <h2>Test Verification Match</h2>
@@ -302,25 +340,23 @@ export default function RegistrationPortal({
               </div>
             </div>
 
-            <div className="card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '32px' }}>
+            <div className="card flex flex-col items-center p-6">
               <ScannerWindow onClick={triggerBiometricTest} />
 
-              <button className="btn btn-primary" style={{ marginTop: '20px' }} onClick={triggerBiometricTest} disabled={scanState === 'scanning'}>
+              <button className="btn btn-primary mt-6" onClick={triggerBiometricTest} disabled={scanState === 'scanning'}>
                 {scanState === 'scanning' ? 'Comparing template...' : 'Scan Index Finger to Verify'}
               </button>
 
               {testResult && (
-                <div style={{ width: '100%', marginTop: '24px', padding: '16px', borderRadius: '6px', backgroundColor: testResult === 'success' ? 'var(--success-100)' : 'var(--danger-100)', color: testResult === 'success' ? 'var(--success-600)' : 'var(--danger-600)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    {testResult === 'success' ? <CheckCircle size={20} /> : <XCircle size={20} />}
-                    <span style={{ fontWeight: 'bold' }}>
-                      {testResult === 'success' ? 'Verification Success: Template matched (Score: 94%)' : 'Verification Failed: Unrecognized fingerprint template.'}
-                    </span>
-                  </div>
+                <div className={`w-full mt-6 p-4 rounded-md flex items-center gap-3 ${testResult === 'success' ? 'bg-success-100 text-success-600' : 'bg-danger-100 text-danger-600'}`}>
+                  {testResult === 'success' ? <CheckCircle size={20} /> : <XCircle size={20} />}
+                  <span className="font-bold">
+                    {testResult === 'success' ? 'Verification Success: Template matched (Score: 94%)' : 'Verification Failed: Unrecognized fingerprint template.'}
+                  </span>
                 </div>
               )}
 
-              <div style={{ display: 'flex', gap: '12px', marginTop: '32px', width: '100%', justifyContent: 'flex-end' }}>
+              <div className="flex gap-3 mt-8 w-full justify-end">
                 <button className="btn btn-secondary" onClick={() => { setActiveScreen('enrollment'); resetProgress(); }}>
                   Re-enroll Biometrics
                 </button>
@@ -358,7 +394,7 @@ export default function RegistrationPortal({
                 <tbody>
                   {students.map(student => (
                     <tr key={student.matric}>
-                      <td style={{ fontWeight: 600 }}>{student.matric}</td>
+                      <td className="font-bold">{student.matric}</td>
                       <td>{student.name}</td>
                       <td>{student.dept}</td>
                       <td>
@@ -368,8 +404,7 @@ export default function RegistrationPortal({
                       </td>
                       <td>
                         <button 
-                          className="btn btn-secondary" 
-                          style={{ height: '32px', padding: '0 12px', fontSize: '12px' }}
+                          className="btn btn-secondary h-8 px-3 text-xs"
                           onClick={() => {
                             setActiveEnrollmentStudent(student);
                             resetProgress();
@@ -409,14 +444,14 @@ export default function RegistrationPortal({
                 </thead>
                 <tbody>
                   <tr>
-                    <td style={{ color: 'var(--text-muted)' }}>2026-06-14 10:32 AM</td>
+                    <td className="text-muted">2026-06-14 10:32 AM</td>
                     <td>Officer Vincent</td>
                     <td>Biometric enrollment template generated</td>
                     <td>John Doe (CSC/2026/001)</td>
                     <td><span className="badge badge-success">Success</span></td>
                   </tr>
                   <tr>
-                    <td style={{ color: 'var(--text-muted)' }}>2026-06-14 09:15 AM</td>
+                    <td className="text-muted">2026-06-14 09:15 AM</td>
                     <td>Officer Vincent</td>
                     <td>Poor scan quality template rejected (NFIQ: 42%)</td>
                     <td>Robert Johnson (CSC/2026/003)</td>
@@ -429,7 +464,7 @@ export default function RegistrationPortal({
         )}
 
         {activeScreen === 'settings' && (
-          <div style={{ maxWidth: '640px', margin: '0 auto', width: '100%' }}>
+          <div className="w-full max-w-2xl mx-auto">
             <div className="workspace-header">
               <div className="workspace-title">
                 <h2>Enrollment Configurations</h2>
@@ -439,17 +474,17 @@ export default function RegistrationPortal({
 
             <div className="card">
               <h3>Device Settings</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '16px' }}>
-                <div>
+              <div className="flex flex-col gap-4 mt-4">
+                <div className="form-group">
                   <label htmlFor="ws-port">Scanner WebSocket URL</label>
                   <input type="text" id="ws-port" defaultValue="ws://127.0.0.1:8000/biometrics/stream" />
                 </div>
-                <div className="form-grid-2">
-                  <div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="form-group">
                     <label htmlFor="nfiq-thresh">Minimum NFIQ 2 Quality Score (%)</label>
                     <input type="text" id="nfiq-thresh" defaultValue="60" />
                   </div>
-                  <div>
+                  <div className="form-group">
                     <label htmlFor="scan-count">Calibration Scans Required</label>
                     <input type="text" id="scan-count" defaultValue="4" />
                   </div>
@@ -459,8 +494,8 @@ export default function RegistrationPortal({
 
             <div className="card">
               <h3>Simulate Hardware Trigger (Debugging)</h3>
-              <p style={{ marginBottom: '16px' }}>Simulate hardware connection drops or sensor calibration faults:</p>
-              <div style={{ display: 'flex', gap: '12px' }}>
+              <p className="mb-4">Simulate hardware connection drops or sensor calibration faults:</p>
+              <div className="flex gap-3">
                 <button className="btn btn-secondary" onClick={() => { setScannerConnection('connected'); setScannerMessage('Scanner status updated.'); }}>
                   Set Connected
                 </button>

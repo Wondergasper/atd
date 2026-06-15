@@ -4,6 +4,8 @@ import {
 } from 'lucide-react';
 import { useScanner } from '../hooks/useScanner';
 
+import { biometricService } from '../services/api';
+
 export default function KioskPortal({ 
   students, 
   kioskState, 
@@ -13,141 +15,140 @@ export default function KioskPortal({
   setRosterList, 
   onExit 
 }) {
-  const { scannerConnection, setScannerConnection } = useScanner();
+  const { scannerConnection, triggerBiometricTest, capturedTemplate } = useScanner();
 
-  const triggerKioskScan = () => {
+  const handleKioskScanTrigger = () => {
     if (scannerConnection === 'disconnected') {
       setKioskState('error');
       return;
     }
     setKioskState('scanning');
-    
-    setTimeout(() => {
-      const seed = Math.random();
-      if (seed < 0.7) {
-        const student = students[Math.floor(Math.random() * students.length)];
-        setKioskVerifiedStudent(student);
-        setKioskState('success');
-        
-        setRosterList(prev => prev.map(s => 
-          s.matric === student.matric ? { ...s, status: 'PRESENT', time: '08:34 AM' } : s
-        ));
-      } else if (seed < 0.88) {
-        const student = students[Math.floor(Math.random() * students.length)];
-        setKioskVerifiedStudent(student);
-        setKioskState('duplicate');
-      } else {
-        setKioskState('failure');
-      }
-    }, 1500);
+    triggerBiometricTest();
   };
 
+  // Effect to handle verification once template is captured
+  React.useEffect(() => {
+    if (kioskState === 'scanning' && capturedTemplate) {
+      const verify = async () => {
+        try {
+          const result = await biometricService.verify({
+            template_data: capturedTemplate,
+            device_id: 1 // Placeholder
+          });
+
+          if (result.matched) {
+            // Find student in our local list for display
+            const student = students.find(s => s.id === result.student_id);
+            setKioskVerifiedStudent(student);
+            setKioskState('success');
+            
+            setRosterList(prev => prev.map(s => 
+              s.id === result.student_id ? { ...s, status: 'PRESENT', time: new Date().toLocaleTimeString() } : s
+            ));
+          } else {
+            setKioskState('failure');
+          }
+        } catch (error) {
+          setKioskState('error');
+        }
+      };
+      verify();
+    }
+  }, [capturedTemplate, kioskState]);
+
   return (
-    <div className="kiosk-fullscreen-wrapper">
+    <div className="kiosk-fullscreen-wrapper" style={{ backgroundColor: 'var(--primary-50)', backgroundImage: 'radial-gradient(circle at center, var(--accent-100) 0%, transparent 70%)' }}>
       <div style={{ position: 'absolute', top: '24px', left: '24px' }}>
-        <button className="kiosk-exit-btn" onClick={onExit}>
-          <ArrowRight size={14} style={{ transform: 'rotate(180deg)' }} /> Exit Terminal
+        <button className="btn btn-secondary flex items-center gap-2 border-0 bg-white/50 backdrop-blur-md" onClick={onExit}>
+          <ArrowRight size={14} style={{ transform: 'rotate(180deg)' }} /> 
+          <span className="font-mono text-xs uppercase tracking-widest font-bold">Exit Terminal</span>
         </button>
       </div>
 
       {kioskState === 'idle' && (
-        <div className="kiosk-card" onClick={triggerKioskScan}>
-          <div className="kiosk-giant-badge success animate-pulse-ring">
-            <Fingerprint size={48} />
+        <div className="portal-glass-card flex flex-col items-center max-w-xl text-center" onClick={handleKioskScanTrigger}>
+          <div className="kiosk-giant-badge success animate-pulse-ring mb-8" style={{ width: '100px', height: '100px', backgroundColor: 'var(--accent-100)', color: 'var(--accent-600)', border: '1px solid var(--accent-600)/20' }}>
+            <Fingerprint size={54} />
           </div>
-          <span className="kiosk-headline">PLACE FINGER TO CHECK IN</span>
-          <span className="kiosk-subhead">Please hold your index finger on the fingerprint scanner window.</span>
+          <span className="badge badge-warning font-mono mb-4 px-4 text-[11px] tracking-tighter border border-accent-600/20">
+            SYSTEM STANDBY • READY FOR BIOMETRIC CAPTURE
+          </span>
+          <h2 className="text-4xl font-bold mb-4" style={{ color: 'var(--primary-950)' }}>IDENTIFY TO PROCEED</h2>
+          <p className="text-muted text-lg max-w-sm">Place your right index finger firmly on the biometric scanner window to record your session presence.</p>
           
-          <div style={{ width: '100%', maxWidth: '320px', borderTop: '1px solid #334155', paddingTop: '20px', display: 'flex', justifyContent: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#94A3B8', fontSize: '14px' }}>
-              <Laptop size={16} />
-              <span>Scanner active & waiting...</span>
-            </div>
+          <div className="w-full mt-10 pt-8 border-t border-light flex justify-center items-center gap-4 text-dim">
+             <Laptop size={18} className="text-accent-600" />
+             <span className="font-mono text-xs uppercase tracking-widest">Scanner ID: NODE-04A (LIVE)</span>
           </div>
         </div>
       )}
 
       {kioskState === 'scanning' && (
-        <div className="kiosk-card">
-          <div className="fingerprint-scanner-window active-scanning" style={{ margin: '0 0 24px 0' }}>
-            <div className="scanner-beam"></div>
-            <Fingerprint size={84} className="fingerprint-graphic" />
+        <div className="portal-glass-card flex flex-col items-center max-w-xl text-center">
+          <div className="fingerprint-scanner-window active" style={{ width: '180px', height: '220px' }}>
+            <div className="scanner-beam" style={{ height: '3px' }}></div>
+            <Fingerprint size={96} className="text-accent-600 opacity-20" />
           </div>
-          <span className="kiosk-headline animate-pulse">SCANNING FINGERPRINT</span>
-          <span className="kiosk-subhead" style={{ marginBottom: '0' }}>Comparing templates against database... keep finger still</span>
+          <h2 className="text-3xl font-bold animate-pulse" style={{ color: 'var(--primary-950)' }}>SYNCHRONIZING TEMPLATE</h2>
+          <p className="text-muted mt-4 font-mono text-sm tracking-tight">Accessing Central Registry Database...</p>
         </div>
       )}
 
       {kioskState === 'success' && (
-        <div className="kiosk-card success-border">
-          <div className="kiosk-giant-badge success">
-            <CheckCircle size={48} />
+        <div className="portal-glass-card flex flex-col items-center max-w-xl text-center border-success-600 shadow-[0_0_80px_rgba(16,185,129,0.1)]">
+          <div className="kiosk-giant-badge success mb-8" style={{ width: '100px', height: '100px', backgroundColor: 'var(--success-100)', color: 'var(--success-600)', border: '2px solid var(--success-600)' }}>
+            <CheckCircle size={54} />
           </div>
-          <span className="kiosk-headline" style={{ color: 'var(--success-600)' }}>ATTENDANCE RECORDED!</span>
-          <span style={{ fontSize: '28px', fontWeight: 700, margin: '8px 0' }}>{kioskVerifiedStudent?.name}</span>
-          <span style={{ fontSize: '18px', color: '#94A3B8', marginBottom: '24px' }}>{kioskVerifiedStudent?.matric}</span>
-          <span className="badge badge-success" style={{ padding: '4px 16px', fontSize: '14px' }}>
-            Verified Successfully (08:34 AM)
-          </span>
-        </div>
-      )}
-
-      {kioskState === 'duplicate' && (
-        <div className="kiosk-card warning-border">
-          <div className="kiosk-giant-badge warning">
-            <AlertTriangle size={48} />
+          <span className="badge badge-success font-mono mb-4 px-6 text-[11px] tracking-widest uppercase">Verification Confirmed</span>
+          <h2 className="text-5xl font-bold mb-4" style={{ color: 'var(--primary-950)' }}>{kioskVerifiedStudent?.name}</h2>
+          <span className="font-mono text-xl text-muted mb-8 tracking-tighter">{kioskVerifiedStudent?.matric}</span>
+          
+          <div className="w-full mt-6 p-4 rounded-xl bg-success-100/50 border border-success-600/20 text-success-600 font-bold">
+            SESSION RECORDED • {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
           </div>
-          <span className="kiosk-headline" style={{ color: 'var(--warning-600)' }}>ALREADY CHECKED IN</span>
-          <span style={{ fontSize: '28px', fontWeight: 700, margin: '8px 0' }}>{kioskVerifiedStudent?.name}</span>
-          <span style={{ fontSize: '18px', color: '#94A3B8', marginBottom: '24px' }}>{kioskVerifiedStudent?.matric}</span>
-          <p style={{ color: '#94A3B8', fontSize: '14px', maxWidth: '380px', margin: '0' }}>
-            Your attendance has already been logged. No duplicate check-in required.
-          </p>
+          
+          <button className="btn btn-ghost mt-10 text-xs font-bold uppercase tracking-widest text-dim" onClick={() => setKioskState('idle')}>
+            Next Student In Line →
+          </button>
         </div>
       )}
 
       {kioskState === 'failure' && (
-        <div className="kiosk-card danger-border">
-          <div className="kiosk-giant-badge danger">
-            <XCircle size={48} />
+        <div className="portal-glass-card flex flex-col items-center max-w-xl text-center border-danger-600 shadow-[0_0_80px_rgba(239,68,68,0.1)]">
+          <div className="kiosk-giant-badge danger mb-8" style={{ width: '100px', height: '100px', backgroundColor: 'var(--danger-100)', color: 'var(--danger-600)', border: '2px solid var(--danger-600)' }}>
+            <XCircle size={54} />
           </div>
-          <span className="kiosk-headline" style={{ color: 'var(--danger-600)' }}>VERIFICATION FAILED</span>
-          <span className="kiosk-subhead">We could not match your fingerprint template.</span>
-          <div style={{ display: 'flex', gap: '16px' }}>
-            <button className="btn btn-primary btn-danger" onClick={() => setKioskState('idle')}>
-              Try Scanning Again
+          <span className="badge badge-danger font-mono mb-4 px-6 text-[11px] tracking-widest uppercase">Match Failed</span>
+          <h2 className="text-3xl font-bold mb-4" style={{ color: 'var(--primary-950)' }}>IDENTITY MISMATCH</h2>
+          <p className="text-muted text-lg max-w-sm mb-10">We could not securely correlate your fingerprint with any student in the local registry.</p>
+          
+          <div className="flex gap-4 w-full">
+            <button className="btn btn-primary flex-1 py-4 uppercase text-xs tracking-widest" style={{ backgroundColor: 'var(--danger-600)' }} onClick={() => setKioskState('idle')}>
+              Retry Hardware Scan
             </button>
-            <button className="btn btn-secondary" onClick={() => { alert('Manual Entry.'); setKioskState('idle'); }} style={{ color: '#FFFFFF', borderColor: '#475569', backgroundColor: '#334155' }}>
-              Enter ID Manually
+            <button className="btn btn-secondary flex-1 py-4 uppercase text-xs tracking-widest" onClick={() => { alert('Manual entry protocol initiated.'); setKioskState('idle'); }}>
+              Manual Entry
             </button>
           </div>
         </div>
       )}
 
       {kioskState === 'error' && (
-        <div className="kiosk-card danger-border" style={{ backgroundColor: '#7F1D1D', borderColor: '#DC2626' }}>
-          <div className="kiosk-giant-badge danger" style={{ borderColor: '#FFFFFF', color: '#FFFFFF' }}>
-            <ShieldAlert size={48} />
+        <div className="portal-glass-card flex flex-col items-center max-w-xl text-center border-stone-800 bg-stone-900 shadow-2xl">
+          <div className="kiosk-giant-badge danger mb-8" style={{ width: '100px', height: '100px', backgroundColor: 'var(--primary-950)', color: 'white', border: '1px solid rgba(255,255,255,0.1)' }}>
+            <ShieldAlert size={54} />
           </div>
-          <span className="kiosk-headline" style={{ color: '#FFFFFF' }}>SCANNER OFFLINE</span>
-          <p style={{ color: '#FECACA', fontSize: '14px', maxWidth: '380px' }}>
-            Local client websocket reporting connectivity drop. Please contact the ICT helpdesk.
-          </p>
-          <button className="btn btn-secondary" onClick={() => setKioskState('idle')} style={{ marginTop: '24px', backgroundColor: '#FFFFFF', color: '#7F1D1D' }}>
-            Dismiss
+          <h2 className="text-3xl font-bold mb-4 text-white uppercase tracking-tighter">HARDWARE DISCONNECT</h2>
+          <p className="text-stone-400 text-lg max-w-sm mb-10">Central telemetry reports the Local Biometric Agent is currently unreachable.</p>
+          
+          <button className="btn btn-primary w-full py-4 uppercase text-xs tracking-widest bg-white text-stone-900 border-0" onClick={() => setKioskState('idle')}>
+            Initialize Diagnostics
           </button>
         </div>
       )}
 
-      <div className="kiosk-footer-note">
-        <span>[Click canvas to simulate scanning a finger]</span>
-        <span style={{ color: '#475569' }}>|</span>
-        <button 
-          onClick={() => { setScannerConnection(prev => prev === 'connected' ? 'disconnected' : 'connected'); }}
-          style={{ background: 'none', border: 'none', color: '#94A3B8', cursor: 'pointer', textDecoration: 'underline' }}
-        >
-          Simulate Disconnect
-        </button>
+      <div className="kiosk-footer-note text-dim font-mono text-xs">
+        <span>[SYSTEM ACTIVE NODE]</span>
       </div>
     </div>
   );

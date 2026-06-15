@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './App.css';
 import { ScannerProvider } from './hooks/useScanner';
 import LandingPortal from './portals/LandingPortal';
@@ -7,9 +7,9 @@ import KioskPortal from './portals/KioskPortal';
 import LecturerPortal from './portals/LecturerPortal';
 import AdminPortal from './portals/AdminPortal';
 import LoginGate from './components/LoginGate';
+import { studentService } from './services/api';
 
 import { 
-  INITIAL_STUDENTS, 
   INITIAL_DEVICES, 
   MOCK_ROSTER 
 } from './data/mockDb';
@@ -18,11 +18,38 @@ function PortalCoordinator() {
   // Navigation: 'landing', 'portal_1', 'portal_2', 'portal_3', 'portal_4'
   const [currentPortal, setCurrentPortal] = useState('landing');
   const [activeScreen, setActiveScreen] = useState('dashboard');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Roster / Database states
-  const [students, setStudents] = useState(INITIAL_STUDENTS);
+  const [students, setStudents] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [devices, setDevices] = useState(INITIAL_DEVICES);
   const [rosterList, setRosterList] = useState(MOCK_ROSTER);
+
+  // Fetch students on mount
+  useEffect(() => {
+    const loadStudents = async () => {
+      setLoading(true);
+      try {
+        const data = await studentService.getAll();
+        // Map backend student to frontend format if needed
+        const mappedStudents = data.map(s => ({
+          id: s.id,
+          matric: s.matric_number,
+          name: `${s.first_name} ${s.last_name}`,
+          dept: s.department_id === 1 ? 'Computer Science' : 'Engineering', // Placeholder mapping
+          status: s.biometrics?.length > 0 ? 'Enrolled' : 'Pending',
+          attendance: '0%' // Placeholder
+        }));
+        setStudents(mappedStudents);
+      } catch (error) {
+        console.error("Failed to load students:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadStudents();
+  }, []);
 
   // Portal Authentication gate checks
   const [portalLogins, setPortalLogins] = useState({
@@ -110,6 +137,8 @@ function PortalCoordinator() {
             activeScreen={activeScreen}
             setActiveScreen={setActiveScreen}
             onLogout={() => handleExitPortal('portal_1')}
+            isSidebarOpen={isSidebarOpen}
+            setIsSidebarOpen={setIsSidebarOpen}
           />
         )
       )}
@@ -175,6 +204,8 @@ function PortalCoordinator() {
             selectedRiskStudent={selectedRiskStudent}
             setSelectedRiskStudent={setSelectedRiskStudent}
             handleAddDeviceSubmit={handleAddDeviceSubmit}
+            isSidebarOpen={isSidebarOpen}
+            setIsSidebarOpen={setIsSidebarOpen}
           />
         )
       )}
