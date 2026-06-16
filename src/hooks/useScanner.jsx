@@ -10,16 +10,26 @@ export function ScannerProvider({ children }) {
   const [enrollmentProgress, setEnrollmentProgress] = useState(0);
   const [testResult, setTestResult] = useState(null);
   const [capturedTemplate, setCapturedTemplate] = useState(null);
+  const [isRealHardware, setIsRealHardware] = useState(false);
 
   const socketRef = useRef(null);
   const onCompleteRef = useRef(null);
   const activeStudentRef = useRef(null);
+  const enrollmentProgressRef = useRef(0);
 
-  // Initialize WebSocket connection to Local Agent
+  // Keep enrollmentProgressRef in sync so the WebSocket callback always has the latest value
+  // without needing enrollmentProgress in the useEffect dep array (which would restart the socket).
   useEffect(() => {
+    enrollmentProgressRef.current = enrollmentProgress;
+  }, [enrollmentProgress]);
+
+  // Initialize WebSocket connection to Local Agent — runs ONCE on mount
+  useEffect(() => {
+    let reconnectTimer = null;
+
     const connect = () => {
       const ws = new WebSocket('ws://localhost:8001/ws/scan');
-      
+
       ws.onopen = () => {
         setScannerConnection('connected');
         setScannerMessage('Hardware Agent Connected. Ready for capture.');
@@ -27,7 +37,12 @@ export function ScannerProvider({ children }) {
 
       ws.onmessage = (event) => {
         const data = JSON.parse(event.data);
-        
+
+        // Detect whether the agent is running real or mock hardware
+        if (data.hardware_mode !== undefined) {
+          setIsRealHardware(data.hardware_mode === 'real');
+        }
+
         if (data.status === 'scanning') {
           setScanState('scanning');
           setScannerMessage(data.message);
@@ -36,10 +51,11 @@ export function ScannerProvider({ children }) {
           setQualityScore(data.quality);
           setCapturedTemplate(data.template_data);
           setScannerMessage(data.message);
-          
-          // Increment progress
-          const nextProgress = enrollmentProgress + 1;
+
+          // Use ref to get latest progress without restarting the socket
+          const nextProgress = enrollmentProgressRef.current + 1;
           setEnrollmentProgress(nextProgress);
+          enrollmentProgressRef.current = nextProgress;
 
           // If this was the final scan, trigger the callback
           if (nextProgress === 4 && onCompleteRef.current) {
@@ -53,17 +69,27 @@ export function ScannerProvider({ children }) {
 
       ws.onclose = () => {
         setScannerConnection('disconnected');
+        setIsRealHardware(false);
         setScannerMessage('Hardware Agent Offline. Please start the Biometric Agent.');
         // Try to reconnect after 5 seconds
-        setTimeout(connect, 5000);
+        reconnectTimer = setTimeout(connect, 5000);
+      };
+
+      ws.onerror = () => {
+        setScannerConnection('disconnected');
+        setIsRealHardware(false);
+        setScannerMessage('Cannot reach Biometric Agent on port 8001.');
       };
 
       socketRef.current = ws;
     };
 
     connect();
-    return () => socketRef.current?.close();
-  }, [enrollmentProgress]);
+    return () => {
+      clearTimeout(reconnectTimer);
+      socketRef.current?.close();
+    };
+  }, []); // Empty deps — connect once, reconnect handled inside onclose
 
   const triggerEnrollmentScan = (activeStudent, onComplete) => {
     if (enrollmentProgress >= 4) return;
@@ -86,10 +112,13 @@ export function ScannerProvider({ children }) {
     }
   }, [enrollmentProgress, capturedTemplate]);
 
+  // Returns true if command was sent, false if agent is offline (so callers can handle state)
   const triggerBiometricTest = () => {
     if (socketRef.current?.readyState === WebSocket.OPEN) {
-        socketRef.current.send(JSON.stringify({ command: 'START_SCAN' }));
+      socketRef.current.send(JSON.stringify({ command: 'START_SCAN' }));
+      return true;
     }
+    return false;
   };
 
   const resetEnrollmentFrame = () => {
@@ -113,6 +142,7 @@ export function ScannerProvider({ children }) {
       enrollmentProgress, setEnrollmentProgress,
       testResult, setTestResult,
       capturedTemplate,
+      isRealHardware,
       triggerEnrollmentScan,
       triggerBiometricTest,
       resetEnrollmentFrame,

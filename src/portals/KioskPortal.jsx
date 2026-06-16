@@ -22,8 +22,13 @@ export default function KioskPortal({
       setKioskState('error');
       return;
     }
-    setKioskState('scanning');
-    triggerBiometricTest();
+    // triggerBiometricTest returns false if the socket is not open
+    const sent = triggerBiometricTest();
+    if (sent) {
+      setKioskState('scanning');
+    } else {
+      setKioskState('error');
+    }
   };
 
   // Effect to handle verification once template is captured
@@ -57,98 +62,138 @@ export default function KioskPortal({
   }, [capturedTemplate, kioskState]);
 
   return (
-    <div className="kiosk-fullscreen-wrapper" style={{ backgroundColor: 'var(--primary-50)', backgroundImage: 'radial-gradient(circle at center, var(--accent-100) 0%, transparent 70%)' }}>
-      <div style={{ position: 'absolute', top: '24px', left: '24px' }}>
-        <button className="btn btn-secondary flex items-center gap-2 border-0 bg-white/50 backdrop-blur-md" onClick={onExit}>
+    <div className="portal-layout items-center justify-center p-6 relative overflow-hidden" style={{ background: 'var(--primary-50)' }}>
+      {/* Morphing Background Element (Light) */}
+      <div style={{
+        position: 'absolute',
+        width: '800px',
+        height: '800px',
+        background: 'radial-gradient(circle, rgba(202, 138, 4, 0.05) 0%, transparent 70%)',
+        borderRadius: '47% 53% 61% 39% / 45% 51% 49% 55%',
+        filter: 'blur(100px)',
+        zIndex: 0,
+        top: '-20%',
+        right: '-20%',
+        pointerEvents: 'none'
+      }}></div>
+
+      <div style={{ position: 'absolute', top: '24px', left: '24px', zIndex: 10 }}>
+        <button className="btn btn-secondary flex items-center gap-2 border-0 bg-white/50 backdrop-blur-md shadow-sm" onClick={onExit}>
           <ArrowRight size={14} style={{ transform: 'rotate(180deg)' }} /> 
           <span className="font-mono text-xs uppercase tracking-widest font-bold">Exit Terminal</span>
         </button>
       </div>
 
-      {kioskState === 'idle' && (
-        <div className="portal-glass-card flex flex-col items-center max-w-xl text-center" onClick={handleKioskScanTrigger}>
-          <div className="kiosk-giant-badge success animate-pulse-ring mb-8" style={{ width: '100px', height: '100px', backgroundColor: 'var(--accent-100)', color: 'var(--accent-600)', border: '1px solid var(--accent-600)/20' }}>
-            <Fingerprint size={54} />
+      <div className="portal-workspace items-center justify-center relative z-10">
+        {kioskState === 'idle' && (
+          <div className="portal-glass-card flex flex-col items-center max-w-xl text-center cursor-pointer" onClick={handleKioskScanTrigger}>
+            <div className="flex items-center justify-center mb-8" style={{ 
+              width: '100px', height: '100px', 
+              backgroundColor: 'var(--accent-100)', 
+              color: 'var(--accent-600)', 
+              borderRadius: 'var(--radius-lg)',
+              boxShadow: '0 0 40px var(--accent-100)'
+            }}>
+              <Fingerprint size={54} />
+            </div>
+            <span className="badge badge-warning font-mono mb-6 px-4 py-1 text-[11px] tracking-tighter border border-accent-600/20">
+              SYSTEM STANDBY • READY FOR BIOMETRIC CAPTURE
+            </span>
+            <h2 className="text-4xl font-bold mb-4" style={{ color: 'var(--primary-950)', letterSpacing: '-0.06em' }}>IDENTIFY TO PROCEED</h2>
+            <p className="text-muted text-lg max-w-sm mb-0">Place your right index finger firmly on the biometric scanner window to record your session presence.</p>
+            
+            <div className="w-full mt-10 pt-8 border-t border-light flex justify-center items-center gap-4 text-dim">
+               <Laptop size={18} className="text-accent-600" />
+               <span className="font-mono text-xs uppercase tracking-widest">Scanner ID: NODE-04A (LIVE)</span>
+            </div>
           </div>
-          <span className="badge badge-warning font-mono mb-4 px-4 text-[11px] tracking-tighter border border-accent-600/20">
-            SYSTEM STANDBY • READY FOR BIOMETRIC CAPTURE
-          </span>
-          <h2 className="text-4xl font-bold mb-4" style={{ color: 'var(--primary-950)' }}>IDENTIFY TO PROCEED</h2>
-          <p className="text-muted text-lg max-w-sm">Place your right index finger firmly on the biometric scanner window to record your session presence.</p>
-          
-          <div className="w-full mt-10 pt-8 border-t border-light flex justify-center items-center gap-4 text-dim">
-             <Laptop size={18} className="text-accent-600" />
-             <span className="font-mono text-xs uppercase tracking-widest">Scanner ID: NODE-04A (LIVE)</span>
-          </div>
-        </div>
-      )}
+        )}
 
-      {kioskState === 'scanning' && (
-        <div className="portal-glass-card flex flex-col items-center max-w-xl text-center">
-          <div className="fingerprint-scanner-window active" style={{ width: '180px', height: '220px' }}>
-            <div className="scanner-beam" style={{ height: '3px' }}></div>
-            <Fingerprint size={96} className="text-accent-600 opacity-20" />
+        {kioskState === 'scanning' && (
+          <div className="portal-glass-card flex flex-col items-center max-w-xl text-center">
+            <div className="fingerprint-scanner-window active" style={{ width: '180px', height: '220px', marginBottom: '2.5rem' }}>
+              <div className="scanner-beam" style={{ height: '3px' }}></div>
+              <Fingerprint size={96} className="text-accent-600 opacity-20" />
+            </div>
+            <h2 className="text-3xl font-bold animate-pulse" style={{ color: 'var(--primary-950)', letterSpacing: '-0.04em' }}>SYNCHRONIZING TEMPLATE</h2>
+            <p className="text-muted mt-4 font-mono text-sm tracking-tight">Accessing Central Registry Database...</p>
           </div>
-          <h2 className="text-3xl font-bold animate-pulse" style={{ color: 'var(--primary-950)' }}>SYNCHRONIZING TEMPLATE</h2>
-          <p className="text-muted mt-4 font-mono text-sm tracking-tight">Accessing Central Registry Database...</p>
-        </div>
-      )}
+        )}
 
-      {kioskState === 'success' && (
-        <div className="portal-glass-card flex flex-col items-center max-w-xl text-center border-success-600 shadow-[0_0_80px_rgba(16,185,129,0.1)]">
-          <div className="kiosk-giant-badge success mb-8" style={{ width: '100px', height: '100px', backgroundColor: 'var(--success-100)', color: 'var(--success-600)', border: '2px solid var(--success-600)' }}>
-            <CheckCircle size={54} />
-          </div>
-          <span className="badge badge-success font-mono mb-4 px-6 text-[11px] tracking-widest uppercase">Verification Confirmed</span>
-          <h2 className="text-5xl font-bold mb-4" style={{ color: 'var(--primary-950)' }}>{kioskVerifiedStudent?.name}</h2>
-          <span className="font-mono text-xl text-muted mb-8 tracking-tighter">{kioskVerifiedStudent?.matric}</span>
-          
-          <div className="w-full mt-6 p-4 rounded-xl bg-success-100/50 border border-success-600/20 text-success-600 font-bold">
-            SESSION RECORDED • {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-          </div>
-          
-          <button className="btn btn-ghost mt-10 text-xs font-bold uppercase tracking-widest text-dim" onClick={() => setKioskState('idle')}>
-            Next Student In Line →
-          </button>
-        </div>
-      )}
-
-      {kioskState === 'failure' && (
-        <div className="portal-glass-card flex flex-col items-center max-w-xl text-center border-danger-600 shadow-[0_0_80px_rgba(239,68,68,0.1)]">
-          <div className="kiosk-giant-badge danger mb-8" style={{ width: '100px', height: '100px', backgroundColor: 'var(--danger-100)', color: 'var(--danger-600)', border: '2px solid var(--danger-600)' }}>
-            <XCircle size={54} />
-          </div>
-          <span className="badge badge-danger font-mono mb-4 px-6 text-[11px] tracking-widest uppercase">Match Failed</span>
-          <h2 className="text-3xl font-bold mb-4" style={{ color: 'var(--primary-950)' }}>IDENTITY MISMATCH</h2>
-          <p className="text-muted text-lg max-w-sm mb-10">We could not securely correlate your fingerprint with any student in the local registry.</p>
-          
-          <div className="flex gap-4 w-full">
-            <button className="btn btn-primary flex-1 py-4 uppercase text-xs tracking-widest" style={{ backgroundColor: 'var(--danger-600)' }} onClick={() => setKioskState('idle')}>
-              Retry Hardware Scan
-            </button>
-            <button className="btn btn-secondary flex-1 py-4 uppercase text-xs tracking-widest" onClick={() => { alert('Manual entry protocol initiated.'); setKioskState('idle'); }}>
-              Manual Entry
+        {kioskState === 'success' && (
+          <div className="portal-glass-card flex flex-col items-center max-w-xl text-center border-success-600" style={{ boxShadow: '0 0 80px rgba(16,185,129,0.1)' }}>
+            <div className="flex items-center justify-center mb-8" style={{ 
+              width: '100px', height: '100px', 
+              backgroundColor: 'var(--success-100)', 
+              color: 'var(--success-600)', 
+              borderRadius: 'var(--radius-lg)',
+              border: '2px solid var(--success-600)'
+            }}>
+              <CheckCircle size={54} />
+            </div>
+            <span className="badge badge-success font-mono mb-4 px-6 text-[11px] tracking-widest uppercase">Verification Confirmed</span>
+            <h2 className="text-5xl font-bold mb-2" style={{ color: 'var(--primary-950)', letterSpacing: '-0.06em' }}>{kioskVerifiedStudent?.name}</h2>
+            <span className="font-mono text-xl text-muted mb-8 tracking-tighter">{kioskVerifiedStudent?.matric}</span>
+            
+            <div className="w-full p-4 rounded-xl bg-success-100/50 border border-success-600/20 text-success-600 font-bold">
+              SESSION RECORDED • {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+            </div>
+            
+            <button className="btn btn-ghost mt-10 text-xs font-bold uppercase tracking-widest text-dim" onClick={() => setKioskState('idle')}>
+              Next Student In Line →
             </button>
           </div>
-        </div>
-      )}
+        )}
 
-      {kioskState === 'error' && (
-        <div className="portal-glass-card flex flex-col items-center max-w-xl text-center border-stone-800 bg-stone-900 shadow-2xl">
-          <div className="kiosk-giant-badge danger mb-8" style={{ width: '100px', height: '100px', backgroundColor: 'var(--primary-950)', color: 'white', border: '1px solid rgba(255,255,255,0.1)' }}>
-            <ShieldAlert size={54} />
+        {kioskState === 'failure' && (
+          <div className="portal-glass-card flex flex-col items-center max-w-xl text-center border-danger-600" style={{ boxShadow: '0 0 80px rgba(239,68,68,0.1)' }}>
+            <div className="flex items-center justify-center mb-8" style={{ 
+              width: '100px', height: '100px', 
+              backgroundColor: 'var(--danger-100)', 
+              color: 'var(--danger-600)', 
+              borderRadius: 'var(--radius-lg)',
+              border: '2px solid var(--danger-600)'
+            }}>
+              <XCircle size={54} />
+            </div>
+            <span className="badge badge-danger font-mono mb-4 px-6 text-[11px] tracking-widest uppercase">Match Failed</span>
+            <h2 className="text-3xl font-bold mb-4" style={{ color: 'var(--primary-950)', letterSpacing: '-0.04em' }}>IDENTITY MISMATCH</h2>
+            <p className="text-muted text-lg max-w-sm mb-10">We could not securely correlate your fingerprint with any student in the local registry.</p>
+            
+            <div className="flex gap-4 w-full">
+              <button className="btn btn-primary flex-1 py-3 uppercase text-xs tracking-widest" onClick={() => setKioskState('idle')}>
+                Retry Hardware Scan
+              </button>
+              <button className="btn btn-secondary flex-1 py-3 uppercase text-xs tracking-widest" onClick={() => { alert('Manual entry protocol initiated.'); setKioskState('idle'); }}>
+                Manual Entry
+              </button>
+            </div>
           </div>
-          <h2 className="text-3xl font-bold mb-4 text-white uppercase tracking-tighter">HARDWARE DISCONNECT</h2>
-          <p className="text-stone-400 text-lg max-w-sm mb-10">Central telemetry reports the Local Biometric Agent is currently unreachable.</p>
-          
-          <button className="btn btn-primary w-full py-4 uppercase text-xs tracking-widest bg-white text-stone-900 border-0" onClick={() => setKioskState('idle')}>
-            Initialize Diagnostics
-          </button>
-        </div>
-      )}
+        )}
 
-      <div className="kiosk-footer-note text-dim font-mono text-xs">
-        <span>[SYSTEM ACTIVE NODE]</span>
+        {kioskState === 'error' && (
+          <div className="portal-glass-card flex flex-col items-center max-w-xl text-center border-stone-800 bg-stone-900 shadow-2xl">
+            <div className="flex items-center justify-center mb-8" style={{ 
+              width: '100px', height: '100px', 
+              backgroundColor: 'rgba(255,255,255,0.05)', 
+              color: 'white', 
+              borderRadius: 'var(--radius-lg)',
+              border: '1px solid rgba(255,255,255,0.1)'
+            }}>
+              <ShieldAlert size={54} />
+            </div>
+            <h2 className="text-3xl font-bold mb-4 text-white uppercase tracking-tighter">HARDWARE DISCONNECT</h2>
+            <p className="text-stone-400 text-lg max-w-sm mb-10">Central telemetry reports the Local Biometric Agent is currently unreachable.</p>
+            
+            <button className="btn btn-primary w-full py-4 uppercase text-xs tracking-widest bg-white text-stone-900 border-0" onClick={() => setKioskState('idle')}>
+              Initialize Diagnostics
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div style={{ position: 'absolute', bottom: '24px', left: '0', right: '0', textAlign: 'center' }} className="text-dim font-mono text-[10px] uppercase tracking-widest">
+        <span>[ SYSTEM ACTIVE NODE • SECURE CAPTURE ENABLED ]</span>
       </div>
     </div>
   );

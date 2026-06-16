@@ -31,7 +31,9 @@ function PortalCoordinator() {
     const loadStudents = async () => {
       setLoading(true);
       try {
+        console.log("Fetching students from backend...");
         const data = await studentService.getAll();
+        console.log("Students received:", data);
         // Map backend student to frontend format if needed
         const mappedStudents = data.map(s => ({
           id: s.id,
@@ -43,7 +45,10 @@ function PortalCoordinator() {
         }));
         setStudents(mappedStudents);
       } catch (error) {
-        console.error("Failed to load students:", error);
+        console.error("Failed to load students from backend. Using mock data for development fallback.", error);
+        // Fallback to mock data if backend fails, for better DX
+        const { INITIAL_STUDENTS } = await import('./data/mockDb');
+        setStudents(INITIAL_STUDENTS);
       } finally {
         setLoading(false);
       }
@@ -127,6 +132,7 @@ function PortalCoordinator() {
           <LoginGate 
             portalTitle="Biometric Enrollment Registry"
             primaryColor="#1E40AF"
+            role="Registration Officer"
             onSubmit={() => handleAuthenticate('portal_1')}
             onCancel={() => handleExitPortal(null)}
           />
@@ -160,6 +166,7 @@ function PortalCoordinator() {
           <LoginGate 
             portalTitle="Lecturer Roster Management"
             primaryColor="#D97706"
+            role="Lecturer"
             onSubmit={() => handleAuthenticate('portal_3')}
             onCancel={() => handleExitPortal(null)}
           />
@@ -185,6 +192,7 @@ function PortalCoordinator() {
           <LoginGate 
             portalTitle="Admin Command Center"
             primaryColor="#DC2626"
+            role="Admin"
             onSubmit={() => handleAuthenticate('portal_4')}
             onCancel={() => handleExitPortal(null)}
           />

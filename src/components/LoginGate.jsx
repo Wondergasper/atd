@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { ShieldCheck, ArrowRight, Lock } from 'lucide-react';
 import { authService } from '../services/api';
 
-export default function LoginGate({ portalTitle, primaryColor, onSubmit, onCancel }) {
+export default function LoginGate({ portalTitle, primaryColor, onSubmit, onCancel, role = 'Admin' }) {
   const [isSignup, setIsSignup] = useState(false);
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -20,7 +20,7 @@ export default function LoginGate({ portalTitle, primaryColor, onSubmit, onCance
           email,
           password,
           full_name: fullName,
-          role: 'Admin' // Default to Admin for this gate
+          role
         });
         alert('Account created successfully. Please login.');
         setIsSignup(false);

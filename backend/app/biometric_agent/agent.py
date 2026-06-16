@@ -19,7 +19,11 @@ app.add_middleware(
 
 @app.get("/status")
 def get_status():
-    return {"status": "online", "hardware": "Futronic FS80H"}
+    return {
+        "status": "online",
+        "hardware": "Futronic FS80H",
+        "hardware_mode": scanner.hardware_mode
+    }
 
 @app.websocket("/ws/scan")
 async def websocket_endpoint(websocket: WebSocket):
@@ -42,10 +46,15 @@ async def websocket_endpoint(websocket: WebSocket):
                         "status": "success",
                         "template_data": result["template"],
                         "quality": result["quality"],
+                        "hardware_mode": result.get("hardware_mode", scanner.hardware_mode),
                         "message": "Scan captured successfully"
                     })
                 else:
-                    await websocket.send_json({"status": "error", "message": result["message"]})
+                    await websocket.send_json({
+                        "status": "error",
+                        "hardware_mode": result.get("hardware_mode", scanner.hardware_mode),
+                        "message": result["message"]
+                    })
                     
     except WebSocketDisconnect:
         print("Frontend Disconnected")

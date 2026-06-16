@@ -45,6 +45,12 @@ def signup(
             status_code=400,
             detail="The user with this username already exists in the system.",
         )
+    email_user = user_repo.get_by_email(db, email=user_in.email)
+    if email_user:
+        raise HTTPException(
+            status_code=400,
+            detail="The user with this email already exists in the system.",
+        )
     return user_repo.create(db, obj_in=user_in)
 
 @router.get("/users", response_model=List[User])

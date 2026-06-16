@@ -1,6 +1,6 @@
 import React from 'react';
 import { 
-  LayoutDashboard, Users, Download, Settings, CheckCircle, AlertTriangle, Play, Menu, BookOpen 
+  LayoutDashboard, Users, Download, Settings, CheckCircle, AlertTriangle, Play, Menu, BookOpen, ArrowLeft
 } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
 import { MOCK_COURSES } from '../data/mockDb';
@@ -21,7 +21,7 @@ export default function LecturerPortal({
   setIsSidebarOpen
 }) {
   return (
-    <div className="portal-layout theme-amber">
+    <div className="portal-layout">
       <Sidebar 
         menuItems={[
           { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -59,7 +59,7 @@ export default function LecturerPortal({
 
             <div className="grid-stats">
               <div className="stat-card">
-                <div className="stat-icon" style={{ backgroundColor: 'var(--accent-100)', color: 'var(--accent-600)' }}><BookOpen size={22} /></div>
+                <div className="stat-icon orange"><BookOpen size={22} /></div>
                 <div className="stat-info">
                   <span className="stat-value">3</span>
                   <span className="stat-label">Active Courses</span>
@@ -73,7 +73,7 @@ export default function LecturerPortal({
                 </div>
               </div>
               <div className="stat-card">
-                <div className="stat-icon red"><AlertTriangle size={22} /></div>
+                <div className="stat-icon" style={{ backgroundColor: 'var(--danger-100)', color: 'var(--danger-600)' }}><AlertTriangle size={22} /></div>
                 <div className="stat-info">
                   <span className="stat-value">2</span>
                   <span className="stat-label">Students At Risk</span>
@@ -87,7 +87,7 @@ export default function LecturerPortal({
                 <div key={course.code} className="card flex flex-col justify-between" style={{ minHeight: '180px' }}>
                   <div>
                     <div className="flex justify-between items-center mb-2">
-                      <span className="badge badge-warning font-mono" style={{ backgroundColor: 'var(--accent-100)', color: 'var(--accent-600)' }}>
+                      <span className="badge badge-warning font-mono">
                         {course.code}
                       </span>
                       <span className="font-bold text-success-600">{course.average} Avg</span>
@@ -131,7 +131,7 @@ export default function LecturerPortal({
                       <div className="text-lg font-bold text-success-600">{course.average}</div>
                     </div>
                   </div>
-                  <button className="btn btn-primary w-full" style={{ backgroundColor: 'var(--accent-600)', borderColor: 'var(--accent-600)' }} onClick={() => { setSelectedCourse(course); setActiveScreen('course-details'); }}>
+                  <button className="btn btn-primary w-full" onClick={() => { setSelectedCourse(course); setActiveScreen('course-details'); }}>
                     Manage Session Attendance
                   </button>
                 </div>
@@ -151,7 +151,7 @@ export default function LecturerPortal({
                 <button className="btn btn-secondary" onClick={() => setActiveScreen('courses')}>
                   <ArrowLeft size={16} /> Back to Courses
                 </button>
-                <button className="btn btn-primary" style={{ backgroundColor: 'var(--accent-600)', borderColor: 'var(--accent-600)' }} onClick={startReportExport}>
+                <button className="btn btn-primary" onClick={startReportExport}>
                   <Download size={16} /> Export Session CSV
                 </button>
               </div>
@@ -235,7 +235,7 @@ export default function LecturerPortal({
                 </div>
 
                 <div className="flex justify-end gap-3 border-t border-light pt-6 mt-6">
-                  <button type="submit" className="btn btn-primary" style={{ backgroundColor: 'var(--accent-600)', borderColor: 'var(--accent-600)' }} disabled={downloadingReport}>
+                  <button type="submit" className="btn btn-primary" disabled={downloadingReport}>
                     <Download size={16} /> {downloadingReport ? 'Building CSV Spreadsheet...' : 'Generate and Export CSV Report'}
                   </button>
                 </div>
@@ -245,7 +245,7 @@ export default function LecturerPortal({
         )}
 
         {activeScreen === 'settings' && (
-          <div style={{ maxWidth: '640px', margin: '0 auto', width: '100%' }}>
+          <div className="w-full max-w-2xl mx-auto">
             <div className="workspace-header">
               <div className="workspace-title">
                 <h2>Settings</h2>
@@ -256,15 +256,16 @@ export default function LecturerPortal({
               <h3>Course Defaults</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '16px' }}>
                 <div className="form-grid-2">
-                  <div>
+                  <div className="form-group">
                     <label htmlFor="late-threshold">Late Threshold (minutes past start)</label>
                     <input type="text" id="late-threshold" defaultValue="15" />
                   </div>
-                  <div>
+                  <div className="form-group">
                     <label htmlFor="absent-threshold">Absent Threshold (minutes past start)</label>
                     <input type="text" id="absent-threshold" defaultValue="30" />
                   </div>
                 </div>
+                <button className="btn btn-primary w-full">Save Changes</button>
               </div>
             </div>
           </div>

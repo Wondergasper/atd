@@ -24,7 +24,6 @@ export default function Sidebar({
           <button 
             className="btn btn-ghost p-1 md-hidden" 
             onClick={() => setIsOpen(false)}
-            style={{ color: 'white' }}
           >
             <X size={20} />
           </button>

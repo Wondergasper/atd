@@ -19,6 +19,10 @@ class FutronicScanner:
                 self.mock = True
                 print("Falling back to MOCK mode.")
 
+    @property
+    def hardware_mode(self):
+        return 'real' if not self.mock else 'mock'
+
     def capture_template(self):
         """
         Triggers the scanner and returns a base64 encoded template string.
@@ -29,10 +33,11 @@ class FutronicScanner:
             # Return a mock template string
             return {
                 "status": "success",
+                "hardware_mode": "mock",
                 "template": "MOCK_TEMPLATE_" + base64.b64encode(os.urandom(16)).decode('utf-8'),
                 "quality": 88
             }
         
-        return {"status": "error", "message": "Real hardware logic requires SDK configuration"}
+        return {"status": "error", "hardware_mode": "real", "message": "Real hardware logic requires SDK configuration"}
 
 scanner = FutronicScanner(mock=True) # Change to False when DLLs are present

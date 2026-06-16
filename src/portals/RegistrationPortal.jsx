@@ -92,7 +92,7 @@ export default function RegistrationPortal({
   };
 
   return (
-    <div className="portal-layout theme-indigo">
+    <div className="portal-layout">
       <Sidebar 
         menuItems={[
           { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -133,7 +133,7 @@ export default function RegistrationPortal({
 
             <div className="grid-stats">
               <div className="stat-card">
-                <div className="stat-icon"><Users size={22} /></div>
+                <div className="stat-icon blue"><Users size={22} /></div>
                 <div className="stat-info">
                   <span className="stat-value">{students.length}</span>
                   <span className="stat-label">Total Roster</span>
@@ -147,7 +147,7 @@ export default function RegistrationPortal({
                 </div>
               </div>
               <div className="stat-card">
-                <div className="stat-icon amber"><Activity size={22} /></div>
+                <div className="stat-icon orange"><Activity size={22} /></div>
                 <div className="stat-info">
                   <span className="stat-value">{students.filter(s => s.status === 'Pending').length}</span>
                   <span className="stat-label">Enrollments Pending</span>
@@ -173,7 +173,7 @@ export default function RegistrationPortal({
         )}
 
         {activeScreen === 'register' && (
-          <div style={{ maxWidth: '640px', margin: '0 auto', width: '100%' }}>
+          <div className="w-full max-w-2xl mx-auto">
             <div className="workspace-header">
               <div className="workspace-title">
                 <h2>Register Student Profile</h2>
@@ -183,7 +183,7 @@ export default function RegistrationPortal({
             <div className="card">
               <form onSubmit={handleRegisterSubmit}>
                 <div className="form-grid-2">
-                  <div>
+                  <div className="form-group">
                     <label htmlFor="stu-name">Full Name</label>
                     <input 
                       type="text" 
@@ -194,7 +194,7 @@ export default function RegistrationPortal({
                       onChange={(e) => setRegistrationForm(prev => ({ ...prev, name: e.target.value }))}
                     />
                   </div>
-                  <div>
+                  <div className="form-group">
                     <label htmlFor="stu-matric">Matric Number</label>
                     <input 
                       type="text" 
@@ -207,7 +207,7 @@ export default function RegistrationPortal({
                   </div>
                 </div>
                 <div className="form-grid-2">
-                  <div>
+                  <div className="form-group">
                     <label htmlFor="stu-dept">Department</label>
                     <select 
                       id="stu-dept"
@@ -219,7 +219,7 @@ export default function RegistrationPortal({
                       <option value="Mechanical Eng.">Mechanical Eng.</option>
                     </select>
                   </div>
-                  <div>
+                  <div className="form-group">
                     <label htmlFor="stu-email">Institutional Email</label>
                     <input 
                       type="email" 
@@ -232,15 +232,17 @@ export default function RegistrationPortal({
                   </div>
                 </div>
 
-                <label className="checkbox-container">
+                <div className="flex items-start gap-3 mt-4 mb-6">
                   <input 
                     type="checkbox" 
+                    id="stu-consent"
+                    className="mt-1 w-4 h-4"
                     required 
                     checked={registrationForm.consent}
                     onChange={(e) => setRegistrationForm(prev => ({ ...prev, consent: e.target.checked }))}
                   />
-                  <span>I verify that the student has read the Biometric Privacy Consent forms and grants explicit permission to capture and store encrypted fingerprint templates.</span>
-                </label>
+                  <label htmlFor="stu-consent" className="mb-0 text-sm">I verify that the student has read the Biometric Privacy Consent forms and grants explicit permission to capture and store encrypted fingerprint templates.</label>
+                </div>
 
                 <div className="flex justify-end gap-3 mt-6">
                   <button type="button" className="btn btn-secondary" onClick={() => setActiveScreen('dashboard')}>Cancel</button>

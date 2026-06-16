@@ -4,7 +4,7 @@ import {
   Plus, CheckCircle, AlertTriangle, X, Shield, Lock, Key, Menu
 } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
-import { authService } from '../services/api';
+import { authService, api } from '../services/api';
 
 export default function AdminPortal({
   students,
@@ -48,16 +48,37 @@ export default function AdminPortal({
     }
   }, [activeScreen]);
 
+  // Fetch devices when 'devices' or 'dashboard' screen is active
+  useEffect(() => {
+    const fetchDevices = async () => {
+      try {
+        const response = await api.get('/devices/');
+        setDevices(response);
+      } catch (error) {
+        console.error("Failed to fetch devices:", error);
+      }
+    };
+    fetchDevices();
+  }, [activeScreen, setDevices]);
+
   const handleAddStaffSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
     try {
-      const newUser = await authService.signup(newStaffForm);
+      // Backend expects: username, email, full_name, role, password, is_active
+      const payload = {
+        ...newStaffForm,
+        is_active: true
+      };
+      const newUser = await authService.signup(payload);
       setStaffList(prev => [...prev, newUser]);
       setShowAddStaffModal(false);
       setNewStaffForm({ username: '', email: '', password: '', full_name: '', role: 'Lecturer' });
       alert('Staff user created successfully.');
     } catch (error) {
       alert(`Failed to create staff: ${error.message}`);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -121,7 +142,7 @@ export default function AdminPortal({
 
             <div className="grid-stats">
               <div className="stat-card">
-                <div className="stat-icon" style={{ backgroundColor: 'var(--accent-100)', color: 'var(--accent-600)' }}><Laptop size={22} /></div>
+                <div className="stat-icon orange"><Laptop size={22} /></div>
                 <div className="stat-info">
                   <span className="stat-value">{devices.length}</span>
                   <span className="stat-label">Registered Scanners</span>
@@ -130,12 +151,12 @@ export default function AdminPortal({
               <div className="stat-card">
                 <div className="stat-icon green"><CheckCircle size={22} /></div>
                 <div className="stat-info">
-                  <span className="stat-value">{devices.filter(d => d.status === 'Ready').length}</span>
+                  <span className="stat-value">{devices.filter(d => d.status === 'Ready' || d.status === 'ONLINE').length}</span>
                   <span className="stat-label">Active Scanners</span>
                 </div>
               </div>
               <div className="stat-card">
-                <div className="stat-icon" style={{ backgroundColor: 'var(--primary-100)', color: 'var(--primary-900)' }}><Activity size={22} /></div>
+                <div className="stat-icon blue"><Shield size={22} /></div>
                 <div className="stat-info">
                   <span className="stat-value">98.2%</span>
                   <span className="stat-label">System Uptime</span>
@@ -274,7 +295,9 @@ export default function AdminPortal({
                     </div>
                     <div className="flex justify-end gap-3 mt-6">
                       <button type="button" className="btn btn-secondary" onClick={() => setShowAddStaffModal(false)}>Cancel</button>
-                      <button type="submit" className="btn btn-primary" style={{ backgroundColor: '#DC2626' }}>Authorize Operator</button>
+                      <button type="submit" className="btn btn-primary" disabled={loading}>
+                        {loading ? 'Authorizing...' : 'Authorize Operator'}
+                      </button>
                     </div>
                   </form>
                 </div>
@@ -430,7 +453,7 @@ export default function AdminPortal({
                     </div>
                     <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '24px' }}>
                       <button type="button" className="btn btn-secondary" onClick={() => setShowAddDeviceModal(false)}>Cancel</button>
-                      <button type="submit" className="btn btn-primary" style={{ backgroundColor: '#DC2626' }}>Allocate Node</button>
+                      <button type="submit" className="btn btn-primary">Allocate Node</button>
                     </div>
                   </form>
                 </div>
@@ -664,7 +687,7 @@ export default function AdminPortal({
                     <label htmlFor="sys-audit-ret">Audit Log Retention Policy (days)</label>
                     <input type="text" id="sys-audit-ret" defaultValue="365" />
                   </div>
-                  <button className="btn btn-primary w-full" style={{ backgroundColor: '#DC2626' }}>Update System Globals</button>
+                  <button className="btn btn-primary w-full">Update System Globals</button>
                 </div>
               </div>
 
